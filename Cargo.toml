@@ -3,6 +3,7 @@ name = "verita"
 version = "0.1.0"
 edition = "2024"
 [workspace]
+
 members = [
     "backend",
     "frontend/src-tauri",
@@ -10,6 +11,14 @@ members = [
 resolver = "2"
 
 [workspace.dependencies]
+color-eyre = "0.6.5"
 capnp = "0.25.0"
 quinn = "0.11.9"
 tokio = { version = "1.49.0", features = ["full"] }
+dotenv = "0.15.0"
+tracing = "0.1.44"
+futures = "0.3.31"
+rustls = {version = "0.23.36", features=["ring"]}
+tracing-futures = "0.2.5"
+tracing-subscriber = "0.3.22"
+rustls-pemfile = "2.2.0"

@@ -6,3 +6,9 @@ edition = "2024"
 [dependencies]
 quinn = {workspace = true}
 tokio = {workspace = true}
+dotenv = {workspace = true}
+color-eyre = {workspace = true}
+tracing = {workspace = true}
+futures = {workspace = true}
+rustls = {workspace = true}
+rustls-pemfile = {workspace=true}

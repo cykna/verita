@@ -2,3 +2,5 @@ target/
 backend/target
 frontend/src-tauri/target
 
+.env
+
