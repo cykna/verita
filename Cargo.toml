@@ -22,3 +22,5 @@ rustls = {version = "0.23.36", features=["ring"]}
 tracing-futures = "0.2.5"
 tracing-subscriber = "0.3.22"
 rustls-pemfile = "2.2.0"
+bytes = "1.11.1"
+flume = "0.12.0"

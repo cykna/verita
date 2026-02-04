@@ -167,5 +167,7 @@ async fn handle_request(
 
 fn process_get(x: &[u8]) -> Result<Vec<u8>> {
     println!("{x:?}");
-    Ok(x.to_vec())
+    let mut out = x.to_vec();
+    out.append(&mut b"Cantarenai".to_vec());
+    Ok(out)
 }

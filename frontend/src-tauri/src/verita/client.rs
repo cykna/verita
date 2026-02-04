@@ -1,23 +1,20 @@
 use std::{fs, sync::Arc};
 
+use bytes::{Bytes, BytesMut};
 use color_eyre::eyre::Result;
-use quinn::{crypto::rustls::QuicClientConfig, Connection, Endpoint};
+use flume::{Receiver, Sender, bounded};
+use quinn::{Connection, Endpoint, crypto::rustls::QuicClientConfig};
 use rustls::{
-    pki_types::{pem::PemObject, CertificateDer, PrivateKeyDer},
     RootCertStore,
+    pki_types::{CertificateDer, PrivateKeyDer, pem::PemObject},
 };
-use tokio::sync::mpsc;
-
-pub struct DataController {
-    receiver: mpsc::Receiver<Vec<u8>>,
-    sender: mpsc::Sender<Vec<u8>>,
-}
 
 #[derive(Debug)]
 pub struct VeritaClient {
     endpoint: Endpoint,
-    connection: Connection,
-    controller: DataController,
+    connection: Arc<Connection>,
+    requests: Sender<bytes::Bytes>,
+    responses: Receiver<Bytes>,
 }
 
 impl VeritaClient {
@@ -54,19 +51,46 @@ impl VeritaClient {
 
         // 3. Conexão (O nome "localhost" deve estar no campo SAN do certificado do servidor)
         let server_addr = format!("127.0.0.1:{}", std::env::var("SERVER_PORT")?);
-        let connection = endpoint.connect(server_addr.parse()?, "localhost")?.await?;
+        let connection = Arc::new(endpoint.connect(server_addr.parse()?, "localhost")?.await?);
+
+        let (requests, responses) = Self::run(connection.clone()).await?;
         Ok(Self {
             endpoint,
             connection,
+            requests,
+            responses,
         })
     }
 
-    pub async fn run(&self) -> Result<()> {
-        let (tx, rx) = self.connection.open_bi().await?;
-        tokio::spawn(async {});
+    pub async fn run(conn: Arc<Connection>) -> Result<(Sender<Bytes>, Receiver<Bytes>)> {
+        let (thread_sender, thread_receiver) = bounded::<Bytes>(1);
+        let (response_sender, response_receiver) = bounded(1);
+        tokio::spawn(async move {
+            while let Ok(request) = thread_receiver.recv_async().await {
+                let (mut conn_tx, mut conn_rx) = conn.open_bi().await.unwrap();
+                let mut acc = 0;
+                while let Ok(amount) = conn_tx.write(&request.slice(acc..)).await
+                    && acc < request.len()
+                {
+                    println!("{acc} {amount}");
+                    acc += amount;
+                }
+
+                if let Ok(_) = conn_tx.finish()
+                    && let Ok(data) = conn_rx.read_to_end(0xffff).await
+                    && let Ok(_) = response_sender.send_async(Bytes::from_owner(data)).await
+                {
+                } else {
+                    break;
+                }
+            }
+        });
+        Ok((thread_sender, response_receiver))
     }
 
-    pub async fn send_data(&self) -> Result<()> {
-        self.connection.accept_bi().await?.0
+    pub async fn send_data(&self, data: Bytes) -> Result<Bytes> {
+        self.requests.send_async(data).await?;
+        let data = self.responses.recv_async().await?;
+        Ok(data)
     }
 }
