@@ -33,3 +33,5 @@ rustls = {workspace = true}
 rustls-pemfile = {workspace=true}
 bytes = {workspace=true}
 flume = {workspace=true}
+rust-argon2 = "3.0"
+rand = "0.9.2"

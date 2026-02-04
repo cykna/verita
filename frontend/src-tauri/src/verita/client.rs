@@ -1,9 +1,12 @@
 use std::{fs, sync::Arc};
 
-use bytes::{Bytes, BytesMut};
-use color_eyre::eyre::Result;
+use argon2::Config;
+use bytes::Bytes;
+
+use color_eyre::{Report, eyre::Result, owo_colors::OwoColorize};
 use flume::{Receiver, Sender, bounded};
 use quinn::{Connection, Endpoint, crypto::rustls::QuicClientConfig};
+use rand::TryRngCore;
 use rustls::{
     RootCertStore,
     pki_types::{CertificateDer, PrivateKeyDer, pem::PemObject},
@@ -92,5 +95,19 @@ impl VeritaClient {
         self.requests.send_async(data).await?;
         let data = self.responses.recv_async().await?;
         Ok(data)
+    }
+
+    ///Hashes the provided contents with Argon2 using 16bytes salt
+    pub fn argon_hash(content: &[u8]) -> Result<Bytes> {
+        let mut rng = rand::rngs::OsRng::default();
+        let mut salt = [0; 16];
+        rng.try_fill_bytes(&mut salt)?;
+        let result = argon2::hash_encoded(content, &salt, &Config::rfc9106_low_mem())?;
+        Ok(Bytes::from_owner(result))
+    }
+
+    ///Verifies if the provided `encoded` string matches the provided `raw` bytes. This means that hash(raw) == encoded. Not necessarily this interanlly, but that's the point
+    pub fn verify_hash(encoded: &str, raw: &[u8]) -> Result<bool> {
+        argon2::verify_encoded(encoded, raw)
     }
 }

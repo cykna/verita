@@ -58,88 +58,20 @@ UserToken {
   hmac: uint8[32], 
 }
 
-A senha no client é descriptografada, obviamente, mas no server é sempre esperado que ela siga criptografia de Argon2. Então a senha
+A senha no client é descriptografada no client, obviamente, mas no server é sempre esperado que ela siga criptografia de Argon2. Então a senha
 que o servidor recebe sempre é esperado para ser Argon2 com Salt de 16bytes
 Quando o user loga, é retornado LoginResponse, que contém informações quanto o token de acesso da seção e a informação do user.
 O token então tem as informações do Id, até quando o token é valido, um Nonce aleatorio, e um Hmac pra validações pra verificar se o token é valido ou não.
 Pelo motivo de precisar de um HMAC, o servidor precisa usar uma chave privada pra verificar essas questões. Isso não é papel desse protocolo, então escolha o que achar melhor
 
 ### Chats
-A seção de Chats define a lógica de interação entre usuários. No Verita, o Chat é E2EE (End-to-End Encrypted) por padrão, tratando o servidor como um retransmissor de mensagens opacas.
-1. Tipos de Conversa
+The sending of messages is made via Conversations, interactions peer to peer. In groups, the so called, Servers, it's made via 1:N, following the given structs on cap n proto:
 
-As mensagens são categorizadas pelo seu contexto de destino:
-
-    Direct (1:1): Estabelecida através de um handshake inicial de chaves públicas.
-
-    Group (1:N): Baseada em uma Group Key compartilhada entre os membros, permitindo o envio único de binários pesados.
-
-2. O Handshake de Sessão (Key Exchange)
-
-Para garantir que o servidor não tenha acesso às chaves, o protocolo utiliza o conceito de Double Ratchet simplificado ou X25519:
-
-    Identidade: Cada Client possui um par de chaves fixo.
-
-    Session Secret: Na primeira mensagem, o remetente gera um segredo efêmero e o anexa ao cabeçalho da mensagem (MessageHeader).
-
-    Derivação: O destinatário usa sua chave privada para derivar o mesmo segredo. Uma vez estabelecido, o chat pode reutilizar ou rotacionar chaves conforme a necessidade de segurança.
-
-3. Anatomia da Mensagem
-
-As mensagens trafegam via Cap'n Proto para garantir serialização ultrarrápida (zero-copy).
-Cap’n Proto
-
-struct ChatMessage {
-  header @0 :MessageHeader;
-  content @1 :ContentBody;
+PrivateMessage {
+  messageId: Uint64,
+  roomId: Uint128, min(PublicID) | max(PublicID)
+  content: Bytes, //hashed data with the shared key
 }
-
-struct MessageHeader {
-  conversationId @0 :UInt64;
-  senderId @1 :UInt16;       # ID curto para economia de bytes
-  nonce @2 :Data;            # Bytes aleatórios para a cifra
-  keyMetadata @3 :Data;      # Informações de criptografia (ex: chave efêmera)
-}
-
-struct ContentBody {
-  union {
-    text @0 :Data;           # Texto cifrado e comprimido (Zstd)
-    binary @1 :BinaryRef;    # Referência para conteúdo no Storage
-    call @2 :CallMetadata;   # Sinais para chamadas de voz/vídeo
-  }
-}
-
-struct BinaryRef {
-  handle @0 :UInt64;         # ID retornado pelo Storage
-  key @1 :Data;              # Chave simétrica do arquivo (cifrada para o grupo/user)
-  mimeType @2 :Text;         # Dica para o client sobre como renderizar
-}
-
-4. Fluxo de Grupos e Links de Convite
-
-Para resolver o problema de "Admin Offline", o protocolo Chat utiliza o Invitee Vault:
-
-    Geração do Link: O Admin cria um link contendo um InviteSecret (não enviado ao servidor).
-
-    Cofre de Boas-Vindas: O Client do Admin criptografa a GroupKey com esse InviteSecret e faz o upload para o Storage.
-
-    Adesão Automática: O novo integrante, ao usar o link, baixa o blob do Storage e extrai a GroupKey localmente.
-
-5. Caching e Persistência no Client
-
-Como o servidor é "burro", o Client é responsável pela integridade do histórico:
-
-    Local Index: O Client mantém um banco de dados local (ex: SQLite) mapeando HandleID para o conteúdo já descriptografado.
-
-    Re-fetch: Se o usuário trocar de dispositivo, o Client pede ao servidor os logs de mensagens e busca os binários no Storage, usando as chaves recuperadas do seu Vault Pessoal.
-
-Resumo Técnico para Implementação:
-
-    Criptografia: ChaCha20-Poly1305 para o corpo das mensagens (mais rápido que AES em processadores sem aceleração de hardware).
-
-    Compressão: Zstd antes da criptografia para reduzir o uso de banda.
-
-    Ordem: As mensagens são enviadas via QUIC Streams independentes para evitar Head-of-Line Blocking (uma mensagem pesada não trava o chat).
 
 ## Storages
 
