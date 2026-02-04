@@ -15,10 +15,9 @@ use dotenv::dotenv;
 use quinn::crypto::rustls::QuicServerConfig;
 use rustls::{
     RootCertStore,
-    client::WebPkiServerVerifier,
     crypto::CryptoProvider,
     pki_types::{CertificateDer, PrivateKeyDer, PrivatePkcs8KeyDer, pem::PemObject},
-    server::{WebPkiClientVerifier, danger::ClientCertVerifier},
+    server::WebPkiClientVerifier,
 };
 use tracing::{error, info};
 
