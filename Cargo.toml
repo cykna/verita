@@ -7,6 +7,7 @@ edition = "2024"
 members = [
     "backend",
     "frontend/src-tauri",
+    "verita_protocol",
 ]
 resolver = "2"
 
@@ -24,3 +25,4 @@ tracing-subscriber = "0.3.22"
 rustls-pemfile = "2.2.0"
 bytes = "1.11.1"
 flume = "0.12.0"
+capnpc = "0.25.0"

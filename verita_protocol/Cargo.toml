@@ -1,0 +1,20 @@
+[package]
+name = "verita_protocol"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+# The `_lib` suffix may seem redundant but it is necessary
+# to make the lib name unique and wouldn't conflict with the bin name.
+# This seems to be only an issue on Windows, see https://github.com/rust-lang/cargo/issues/8519
+name = "verita_protocol_lib"
+crate-type = ["staticlib"]
+
+[dependencies]
+capnp = {workspace=true}
+paste = "1.0.15"
+
+[build-dependencies]
+capnpc = {workspace=true}
+
+

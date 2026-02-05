@@ -3,7 +3,7 @@ use std::{fs, sync::Arc};
 use argon2::Config;
 use bytes::Bytes;
 
-use color_eyre::{Report, eyre::Result, owo_colors::OwoColorize};
+use color_eyre::{Report, eyre::Result};
 use flume::{Receiver, Sender, bounded};
 use quinn::{Connection, Endpoint, crypto::rustls::QuicClientConfig};
 use rand::TryRngCore;
@@ -108,6 +108,6 @@ impl VeritaClient {
 
     ///Verifies if the provided `encoded` string matches the provided `raw` bytes. This means that hash(raw) == encoded. Not necessarily this interanlly, but that's the point
     pub fn verify_hash(encoded: &str, raw: &[u8]) -> Result<bool> {
-        argon2::verify_encoded(encoded, raw)
+        argon2::verify_encoded(encoded, raw).map_err(|e| Report::msg(e))
     }
 }

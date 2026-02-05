@@ -1,6 +1,7 @@
 target/
 backend/target
 frontend/src-tauri/target
+verita_protocol/target
 
 .env
 

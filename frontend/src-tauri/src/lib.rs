@@ -1,11 +1,19 @@
 extern crate argon2;
+
+capnp::generated_code!(mod protocol_capnp);
+
 mod login;
 pub use login::*;
+
 mod verita;
 use bytes::Bytes;
+
 use color_eyre::eyre::Result;
+
 use tauri::State;
+
 pub use verita::VeritaClient;
+
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 #[tauri::command]
 fn greet(name: &str) -> String {
