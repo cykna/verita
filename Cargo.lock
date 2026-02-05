@@ -1172,7 +1172,7 @@ dependencies = [
  "tauri-plugin-opener",
  "tokio",
  "tracing",
- "verita_protocol",
+ "verita_protocol_lib",
 ]
 
 [[package]]
@@ -4803,7 +4803,7 @@ name = "verita"
 version = "0.1.0"
 
 [[package]]
-name = "verita_protocol"
+name = "verita_protocol_lib"
 version = "0.1.0"
 dependencies = [
  "capnp",

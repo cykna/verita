@@ -16,6 +16,7 @@
         password,
       });
     }else {
+      console.log("Tá registering");
       await invoke("register", {
         username: privateId,
         password

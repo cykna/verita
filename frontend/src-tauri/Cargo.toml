@@ -35,7 +35,9 @@ rustls-pemfile = {workspace=true}
 bytes = {workspace=true}
 flume = {workspace=true}
 capnp = {workspace=true}
-
+verita_protocol_lib = { workspace=true }
 rust-argon2 = "3.0"
 rand = "0.9.2"
-verita_protocol = {path="../../verita_protocol"}
+
+[profile.release]
+debug=true

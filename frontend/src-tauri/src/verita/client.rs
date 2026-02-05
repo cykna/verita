@@ -69,17 +69,11 @@ impl VeritaClient {
         let (thread_sender, thread_receiver) = bounded::<Bytes>(1);
         let (response_sender, response_receiver) = bounded(1);
         tokio::spawn(async move {
-            while let Ok(request) = thread_receiver.recv_async().await {
-                let (mut conn_tx, mut conn_rx) = conn.open_bi().await.unwrap();
-                let mut acc = 0;
-                while let Ok(amount) = conn_tx.write(&request.slice(acc..)).await
-                    && acc < request.len()
-                {
-                    println!("{acc} {amount}");
-                    acc += amount;
-                }
-
-                if let Ok(_) = conn_tx.finish()
+            while let Ok(request) = thread_receiver.recv_async().await
+                && let Ok((mut conn_tx, mut conn_rx)) = conn.open_bi().await
+            {
+                if let Ok(_) = conn_tx.write_all(&request).await
+                    && let Ok(_) = conn_tx.finish()
                     && let Ok(data) = conn_rx.read_to_end(0xffff).await
                     && let Ok(_) = response_sender.send_async(Bytes::from_owner(data)).await
                 {

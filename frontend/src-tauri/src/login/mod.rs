@@ -1,5 +1,6 @@
 use bytes::Bytes;
 use tauri::State;
+use verita_protocol_lib::RegisterRequest;
 
 use crate::VeritaClient;
 
@@ -10,8 +11,15 @@ pub async fn register(
     username: String,
     password: String,
 ) -> Result<(), String> {
-    let hashed_password = VeritaClient::argon_hash(username.as_bytes());
-
-    client.send_data(Bytes::new());
+    let hashed_password = password.as_bytes();
+    //VeritaClient::argon_hash(password.as_bytes()).map_err(|e| e.to_string())?;
+    println!("{password:?}");
+    let mut out = Vec::new();
+    RegisterRequest::new(username, &hashed_password, &mut out).map_err(|e| e.to_string())?;
+    println!("{out:?}");
+    client
+        .send_data(Bytes::from_owner(out))
+        .await
+        .map_err(|e| e.to_string())?;
     Ok(())
 }

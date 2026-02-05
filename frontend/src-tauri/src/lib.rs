@@ -1,7 +1,5 @@
 extern crate argon2;
 
-capnp::generated_code!(mod protocol_capnp);
-
 mod login;
 pub use login::*;
 
@@ -37,7 +35,7 @@ pub async fn run() -> Result<()> {
     tauri::Builder::default()
         .manage(client)
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![greet, show_client])
+        .invoke_handler(tauri::generate_handler![greet, show_client, register])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
     Ok(())
