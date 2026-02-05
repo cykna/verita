@@ -8,6 +8,8 @@
     event.preventDefault();
     // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
     greetMsg = await invoke("greet", { name });
+    const client = await invoke("show_client");
+    console.log(client);
   }
 </script>
 
