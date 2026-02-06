@@ -23,21 +23,14 @@ tauri = { version = "2", features = [] }
 tauri-plugin-opener = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-
-quinn = {workspace = true}
+rustls = {workspace=true}
+bytes = {workspace=true}
 tokio = {workspace = true}
 dotenv = {workspace = true}
 color-eyre = {workspace = true}
 tracing = {workspace = true}
 futures = {workspace = true}
-rustls = {workspace = true}
-rustls-pemfile = {workspace=true}
-bytes = {workspace=true}
 flume = {workspace=true}
 capnp = {workspace=true}
 verita_protocol_lib = { workspace=true }
-rust-argon2 = "3.0"
-rand = "0.9.2"
 
-[profile.release]
-debug=true

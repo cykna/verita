@@ -1,3 +1,4 @@
+extern crate argon2;
 #[macro_export]
 macro_rules! define_struct {
     (
@@ -47,8 +48,11 @@ macro_rules! define_struct {
         })*
     };
 }
+
 mod auth;
+mod client;
 pub use auth::*;
+pub use client::*;
 capnp::generated_code!(mod protocol_capnp);
 
 pub use protocol_capnp::*;

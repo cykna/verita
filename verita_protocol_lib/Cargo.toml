@@ -11,8 +11,17 @@ name = "verita_protocol_lib"
 crate-type = ["staticlib", "rlib"]
 
 [dependencies]
+tokio = {workspace = true}
 capnp = {workspace=true}
 paste = "1.0.15"
+rust-argon2 = "3.0"
+rand = "0.9.2"
+flume = {workspace=true}
+bytes = {workspace=true}
+rustls = {workspace = true}
+rustls-pemfile = {workspace=true}
+quinn = {workspace = true}
+color-eyre = {workspace = true}
 
 [build-dependencies]
 capnpc = {workspace=true}

@@ -1,16 +1,11 @@
-extern crate argon2;
-
 mod login;
-pub use login::*;
 
-mod verita;
 use bytes::Bytes;
-
 use color_eyre::eyre::Result;
+use login::*;
 
 use tauri::State;
-
-pub use verita::VeritaClient;
+use verita_protocol_lib::{VeritaClient, VeritaClientConfig};
 
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 #[tauri::command]
@@ -29,8 +24,8 @@ async fn show_client(client: State<'_, VeritaClient>) -> Result<String, String> 
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
-pub async fn run() -> Result<()> {
-    let client = VeritaClient::new().await?;
+pub async fn run(config: VeritaClientConfig) -> Result<()> {
+    let client = VeritaClient::new(config).await?;
 
     tauri::Builder::default()
         .manage(client)

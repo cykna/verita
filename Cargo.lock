@@ -1160,11 +1160,7 @@ dependencies = [
  "dotenv",
  "flume",
  "futures",
- "quinn",
- "rand 0.9.2",
- "rust-argon2",
  "rustls",
- "rustls-pemfile",
  "serde",
  "serde_json",
  "tauri",
@@ -4806,9 +4802,18 @@ version = "0.1.0"
 name = "verita_protocol_lib"
 version = "0.1.0"
 dependencies = [
+ "bytes",
  "capnp",
  "capnpc",
+ "color-eyre",
+ "flume",
  "paste",
+ "quinn",
+ "rand 0.9.2",
+ "rust-argon2",
+ "rustls",
+ "rustls-pemfile",
+ "tokio",
 ]
 
 [[package]]

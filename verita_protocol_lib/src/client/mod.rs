@@ -1,4 +1,4 @@
-use std::{fs, sync::Arc};
+use std::{fs, net::SocketAddr, sync::Arc};
 
 use argon2::Config;
 use bytes::Bytes;
@@ -12,6 +12,18 @@ use rustls::{
     pki_types::{CertificateDer, PrivateKeyDer, pem::PemObject},
 };
 
+///A Basic config to stablish informations about the client
+pub struct VeritaClientConfig {
+    ///The path to the CA_CERT
+    pub qa_cert: String,
+    ///The path to the CERT of the client
+    pub quic_cert: String,
+    ///The path to the KEY of the client
+    pub quic_key: String,
+    ///The server this client will request to
+    pub server_address: SocketAddr,
+}
+
 #[derive(Debug)]
 pub struct VeritaClient {
     endpoint: Endpoint,
@@ -21,8 +33,9 @@ pub struct VeritaClient {
 }
 
 impl VeritaClient {
-    pub async fn new() -> Result<Self> {
-        let ca_file = fs::File::open(std::env::var("QUIC_CA_CERT_PATH")?)?; // <-- Caminho para o ca.crt
+    ///Initializes a new client with the provided `config`
+    pub async fn new(config: VeritaClientConfig) -> Result<Self> {
+        let ca_file = fs::File::open(config.qa_cert)?; // <-- Caminho para o ca.crt
         let mut ca_reader = std::io::BufReader::new(ca_file);
         let ca_certs: Vec<CertificateDer> =
             rustls_pemfile::certs(&mut ca_reader).collect::<Result<Vec<_>, _>>()?;
@@ -33,12 +46,12 @@ impl VeritaClient {
         }
 
         // 2. Quem eu sou? (Carregar o client.crt e client_pkcs8.pem)
-        let client_cert_file = fs::File::open(std::env::var("QUIC_CERT_PATH")?)?;
+        let client_cert_file = fs::File::open(config.quic_cert)?;
         let mut client_cert_reader = std::io::BufReader::new(client_cert_file);
         let client_certs: Vec<CertificateDer> =
             rustls_pemfile::certs(&mut client_cert_reader).collect::<Result<Vec<_>, _>>()?;
 
-        let client_key_file = fs::read(std::env::var("QUIC_KEY_PATH")?)?;
+        let client_key_file = fs::read(config.quic_key)?;
         let client_key = PrivateKeyDer::from_pem_slice(&client_key_file)?;
 
         // 3. Montar a configuração
@@ -52,9 +65,11 @@ impl VeritaClient {
         let mut endpoint = Endpoint::client("0.0.0.0:0".parse()?)?;
         endpoint.set_default_client_config(client_config);
 
-        // 3. Conexão (O nome "localhost" deve estar no campo SAN do certificado do servidor)
-        let server_addr = format!("127.0.0.1:{}", std::env::var("SERVER_PORT")?);
-        let connection = Arc::new(endpoint.connect(server_addr.parse()?, "localhost")?.await?);
+        let connection = Arc::new(
+            endpoint
+                .connect(config.server_address, "localhost")?
+                .await?,
+        );
 
         let (requests, responses) = Self::run(connection.clone()).await?;
         Ok(Self {
