@@ -1,36 +1,18 @@
 mod login;
 
-use bytes::Bytes;
 use color_eyre::eyre::Result;
 use login::*;
 
-use tauri::State;
+use tokio::sync::RwLock;
 use verita_protocol_lib::{VeritaClient, VeritaClientConfig};
-
-// Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-#[tauri::command]
-fn greet(name: &str) -> String {
-    format!("Hello, {}! You've been greeted from Rust!", name)
-}
-
-#[tauri::command]
-async fn show_client(client: State<'_, VeritaClient>) -> Result<String, String> {
-    let response = client
-        .send_data(Bytes::from("Hello World"))
-        .await
-        .map_err(|e| e.to_string())?;
-    println!("{response:?}");
-    Ok(unsafe { String::from_utf8_unchecked(response.to_vec()) })
-}
-
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub async fn run(config: VeritaClientConfig) -> Result<()> {
-    let client = VeritaClient::new(config).await?;
+    let client = RwLock::new(VeritaClient::new(config).await?);
 
     tauri::Builder::default()
         .manage(client)
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![greet, show_client, register])
+        .invoke_handler(tauri::generate_handler![register])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
     Ok(())

@@ -1,0 +1,15 @@
+[package]
+name = "verita_protocol_macros"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+proc-macro=true
+
+[dependencies]
+
+quote = "1.0.44"
+syn = "2.0.114"
+heck = "0.5.0"
+rkyv = {workspace=true}
+proc_macros = "0.1.0"

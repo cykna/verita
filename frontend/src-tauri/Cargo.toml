@@ -16,7 +16,7 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
-capnpc = {workspace=true}
+
 
 [dependencies]
 tauri = { version = "2", features = [] }
@@ -31,6 +31,5 @@ color-eyre = {workspace = true}
 tracing = {workspace = true}
 futures = {workspace = true}
 flume = {workspace=true}
-capnp = {workspace=true}
 verita_protocol_lib = { workspace=true }
 

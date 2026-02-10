@@ -88,3 +88,19 @@ Quando um usuário loga, existe a opção de salvar uma imagem posteriormente, i
 BinaryId {
   handle: Uint64
 }
+
+## Error Handling
+
+O error handling vai ser feito por meio de uma struct em especifico, com informações sobre o que ocorreu internamente. A struct pode ser definida como o seguinte:
+
+enum VeritaErrorCode {
+  ...
+}
+
+struct VeritaError {
+  code: VeritaErrorCode,
+  timestamp: Utc,
+  details: Option<String>
+}
+
+type VeritaResponseStatus<T> = Result<T, VeritaError>;

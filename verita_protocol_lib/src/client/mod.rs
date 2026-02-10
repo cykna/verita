@@ -1,7 +1,7 @@
 use std::{fs, net::SocketAddr, sync::Arc};
 
 use argon2::Config;
-use bytes::Bytes;
+use bytes::{Bytes, BytesMut};
 
 use color_eyre::{Report, eyre::Result};
 use flume::{Receiver, Sender, bounded};
@@ -11,6 +11,8 @@ use rustls::{
     RootCertStore,
     pki_types::{CertificateDer, PrivateKeyDer, pem::PemObject},
 };
+
+use crate::VeritaRequest;
 
 ///A Basic config to stablish informations about the client
 pub struct VeritaClientConfig {
@@ -30,6 +32,8 @@ pub struct VeritaClient {
     connection: Arc<Connection>,
     requests: Sender<bytes::Bytes>,
     responses: Receiver<Bytes>,
+    ///The Inner buffer used to send requests
+    buffer: BytesMut,
 }
 
 impl VeritaClient {
@@ -72,11 +76,13 @@ impl VeritaClient {
         );
 
         let (requests, responses) = Self::run(connection.clone()).await?;
+
         Ok(Self {
             endpoint,
             connection,
             requests,
             responses,
+            buffer: BytesMut::new(),
         })
     }
 
@@ -118,5 +124,16 @@ impl VeritaClient {
     ///Verifies if the provided `encoded` string matches the provided `raw` bytes. This means that hash(raw) == encoded. Not necessarily this interanlly, but that's the point
     pub fn verify_hash(encoded: &str, raw: &[u8]) -> Result<bool> {
         argon2::verify_encoded(encoded, raw).map_err(|e| Report::msg(e))
+    }
+
+    pub async fn make_request<T: VeritaRequest>(&mut self) -> Result<T::ResponseReader> {
+        let buf = self.buffer.split();
+        let out = T::read_response(&self.send_data(buf.freeze()).await?)?;
+        Ok(out)
+    }
+
+    ///Retrieves the internal buffer of this client to be used to send requests
+    pub fn buffer(&mut self) -> &mut BytesMut {
+        &mut self.buffer
     }
 }
