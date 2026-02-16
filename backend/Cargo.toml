@@ -12,3 +12,7 @@ tracing = {workspace = true}
 futures = {workspace = true}
 rustls = {workspace = true}
 rustls-pemfile = {workspace=true}
+verita_protocol_lib = {path="../verita_protocol_lib"}
+bytes = {workspace = true}
+rkyv = {workspace = true}
+async-trait = {workspace = true}

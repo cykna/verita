@@ -26,3 +26,4 @@ verita_protocol_lib = {path="verita_protocol_lib"}
 tokio-util = "0.7.18"
 rkyv = "0.8.14"
 async-trait = "0.1.89"
+chrono = "0.4.43"

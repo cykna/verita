@@ -260,14 +260,18 @@ dependencies = [
 name = "backend"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
+ "bytes",
  "color-eyre",
  "dotenv",
  "futures",
  "quinn",
+ "rkyv",
  "rustls",
  "rustls-pemfile",
  "tokio",
  "tracing",
+ "verita_protocol_lib",
 ]
 
 [[package]]
@@ -550,8 +554,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fac4744fb15ae8337dc853fee7fb3f4e48c0fbaa23d0afe49c447b4fab126118"
 dependencies = [
  "iana-time-zone",
+ "js-sys",
  "num-traits",
  "serde",
+ "wasm-bindgen",
  "windows-link 0.2.1",
 ]
 
@@ -4899,6 +4905,7 @@ version = "0.1.0"
 dependencies = [
  "async-trait",
  "bytes",
+ "chrono",
  "color-eyre",
  "flume",
  "quinn",

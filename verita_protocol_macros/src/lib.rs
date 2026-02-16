@@ -25,7 +25,8 @@ pub fn define_rpc(input: TokenStream) -> TokenStream {
         );
 
         // Request variant
-        request_variants.push(quote! { #variant_ident(#req_struct_ident) });
+        let variant = quote! { #variant_ident(#req_struct_ident) };
+        request_variants.push(variant);
 
         // Response variant
         response_variants.push(quote! { #variant_ident(#resp_ty) });
@@ -34,7 +35,7 @@ pub fn define_rpc(input: TokenStream) -> TokenStream {
         let client_method = quote! {
             async fn #method_ident(
                 &mut self,
-                request: &#req_struct_ident,
+                request: #req_struct_ident,
             ) -> Result<#resp_ty, Self::Err>;
         };
         client_methods.push(client_method);

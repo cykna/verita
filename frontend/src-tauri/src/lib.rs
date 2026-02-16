@@ -4,7 +4,8 @@ use color_eyre::eyre::Result;
 use login::*;
 
 use tokio::sync::RwLock;
-use verita_protocol_lib::{VeritaClient, VeritaClientConfig};
+use verita_protocol_lib::client::{VeritaClient, VeritaClientConfig};
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub async fn run(config: VeritaClientConfig) -> Result<()> {
     let client = RwLock::new(VeritaClient::new(config).await?);

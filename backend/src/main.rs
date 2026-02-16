@@ -1,6 +1,4 @@
-//! This example demonstrates an HTTP server that serves files from a directory.
-//!
-//! Checkout the `README.md` for guidance.
+mod server;
 
 use std::{
     ascii, fs,
@@ -20,6 +18,8 @@ use rustls::{
     server::WebPkiClientVerifier,
 };
 use tracing::{error, info};
+
+use crate::server::VeritaServer;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -84,29 +84,8 @@ async fn main() -> Result<()> {
     let endpoint = quinn::Endpoint::server(server_config, addr)?;
     eprintln!("listening on {}", endpoint.local_addr()?);
 
-    while let Some(conn) = endpoint.accept().await {
-        // if options
-        //     .connection_limit
-        //     .is_some_and(|n| endpoint.open_connections() >= n)
-        // {
-        //     info!("refusing due to open connection limit");
-        //     conn.refuse();
-        // } else if Some(conn.remote_address()) == options.block {
-        //     info!("refusing blocked client IP address");
-        //     conn.refuse();
-        // } else if options.stateless_retry && !conn.remote_address_validated() {
-        //     info!("requiring connection to validate its address");
-        //     conn.retry().unwrap();
-        // } else {
-        info!("accepting connection");
-        let fut = handle_connection(conn);
-        tokio::spawn(async move {
-            if let Err(e) = fut.await {
-                error!("connection failed: {reason}", reason = e.to_string())
-            }
-        });
-    }
-
+    let mut server = VeritaServer::new(endpoint);
+    server.init().await;
     Ok(())
 }
 

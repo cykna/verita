@@ -1,18 +1,29 @@
 use std::{fs, net::SocketAddr, sync::Arc};
 
+use crate::{service::VeritaRequest, timestamp};
 use argon2::Config;
+use async_trait::async_trait;
 use bytes::{Bytes, BytesMut};
-
-use color_eyre::{Report, eyre::Result};
+use color_eyre::{Report, eyre::Result as ResultEyre};
 use flume::{Receiver, Sender, bounded};
 use quinn::{Connection, Endpoint, crypto::rustls::QuicClientConfig};
 use rand::TryRngCore;
+use rkyv::{
+    Archive, Deserialize,
+    api::high::HighValidator,
+    bytecheck::CheckBytes,
+    de::Pool,
+    rancor::{self, Strategy},
+};
 use rustls::{
     RootCertStore,
     pki_types::{CertificateDer, PrivateKeyDer, pem::PemObject},
 };
 
-use crate::VeritaRequest;
+use crate::{
+    auth::LoginResponse,
+    service::{VeritaError, VeritaErrorCode, VeritaRpcClient},
+};
 
 ///A Basic config to stablish informations about the client
 pub struct VeritaClientConfig {
@@ -37,8 +48,20 @@ pub struct VeritaClient {
 }
 
 impl VeritaClient {
+    pub fn read<T: Archive>(data: &[u8]) -> Result<T, VeritaError>
+    where
+        T::Archived: for<'a> CheckBytes<HighValidator<'a, rkyv::rancor::Error>>
+            + Deserialize<T, Strategy<Pool, rkyv::rancor::Error>>,
+    {
+        rkyv::from_bytes::<T, rkyv::rancor::Error>(data).map_err(|e| VeritaError {
+            code: VeritaErrorCode::SerdeError,
+            timestamp: timestamp(),
+            details: e.to_string(),
+        })
+    }
+
     ///Initializes a new client with the provided `config`
-    pub async fn new(config: VeritaClientConfig) -> Result<Self> {
+    pub async fn new(config: VeritaClientConfig) -> ResultEyre<Self> {
         let ca_file = fs::File::open(config.qa_cert)?; // <-- Caminho para o ca.crt
         let mut ca_reader = std::io::BufReader::new(ca_file);
         let ca_certs: Vec<CertificateDer> =
@@ -86,7 +109,7 @@ impl VeritaClient {
         })
     }
 
-    pub async fn run(conn: Arc<Connection>) -> Result<(Sender<Bytes>, Receiver<Bytes>)> {
+    pub async fn run(conn: Arc<Connection>) -> ResultEyre<(Sender<Bytes>, Receiver<Bytes>)> {
         let (thread_sender, thread_receiver) = bounded::<Bytes>(1);
         let (response_sender, response_receiver) = bounded(1);
         tokio::spawn(async move {
@@ -106,14 +129,15 @@ impl VeritaClient {
         Ok((thread_sender, response_receiver))
     }
 
-    pub async fn send_data(&self, data: Bytes) -> Result<Bytes> {
+    /// Sends the provided `data` to the server and waits until it's response
+    pub async fn send_data(&self, data: Bytes) -> ResultEyre<Bytes> {
         self.requests.send_async(data).await?;
         let data = self.responses.recv_async().await?;
         Ok(data)
     }
 
     ///Hashes the provided contents with Argon2 using 16bytes salt
-    pub fn argon_hash(content: &[u8]) -> Result<Bytes> {
+    pub fn argon_hash(content: &[u8]) -> ResultEyre<Bytes> {
         let mut rng = rand::rngs::OsRng::default();
         let mut salt = [0; 16];
         rng.try_fill_bytes(&mut salt)?;
@@ -122,18 +146,39 @@ impl VeritaClient {
     }
 
     ///Verifies if the provided `encoded` string matches the provided `raw` bytes. This means that hash(raw) == encoded. Not necessarily this interanlly, but that's the point
-    pub fn verify_hash(encoded: &str, raw: &[u8]) -> Result<bool> {
+    pub fn verify_hash(encoded: &str, raw: &[u8]) -> ResultEyre<bool> {
         argon2::verify_encoded(encoded, raw).map_err(|e| Report::msg(e))
-    }
-
-    pub async fn make_request<T: VeritaRequest>(&mut self) -> Result<T::ResponseReader> {
-        let buf = self.buffer.split();
-        let out = T::read_response(&self.send_data(buf.freeze()).await?)?;
-        Ok(out)
     }
 
     ///Retrieves the internal buffer of this client to be used to send requests
     pub fn buffer(&mut self) -> &mut BytesMut {
         &mut self.buffer
+    }
+}
+
+#[async_trait]
+impl VeritaRpcClient for VeritaClient {
+    type Err = VeritaError;
+    async fn register(
+        &mut self,
+        request: crate::auth::UserRegistrationRequest,
+    ) -> std::result::Result<LoginResponse, Self::Err> {
+        let data =
+            rkyv::to_bytes::<rancor::Error>(&VeritaRequest::REGISTER(request)).map_err(|e| {
+                VeritaError {
+                    code: VeritaErrorCode::CouldNotRespond,
+                    timestamp: timestamp(),
+                    details: e.to_string(),
+                }
+            })?;
+        let data = Bytes::from_owner(data);
+
+        let data = self.send_data(data).await.map_err(|e| VeritaError {
+            code: VeritaErrorCode::CouldNotRespond,
+            timestamp: timestamp(),
+            details: e.to_string(),
+        })?;
+        println!("{data:?}");
+        VeritaClient::read(&data)
     }
 }
