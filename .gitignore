@@ -1,11 +1,11 @@
 target/
 backend/target
 frontend/src-tauri/target
-*.crt
-*.csr
-*.key
-*.pem
-*.srl
-*.env
+**/*.crt
+**/*.csr
+**/*.key
+**/*.pem
+**/*.srl
+**/*.env
 .env
 
