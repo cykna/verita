@@ -7,10 +7,6 @@ run-frontend:
     cd frontend && bun install
     cd frontend && bun run tauri dev
 
-#Initializes frontend and runs it
-initialize-frontend:
-    cd frontend && bun install && bun run tauri dev
-
 CA_KEY := "ca.key"
 CA_CRT := "ca.crt"
 SERVER_DIR := "backend"
