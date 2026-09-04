@@ -1,0 +1,73 @@
+import { HorizontalBox, TextEdit, VerticalBox, LineEdit } from "std-widgets.slint";
+import { Theme } from "../theme.slint";
+import { VeritaButton } from "Button.slint";
+export enum MessageOwner {
+    User, Them
+}
+
+export struct MessageData {
+    content: string,
+    owner: MessageOwner
+}
+
+export component Message inherits Rectangle {
+    in property <string> content;
+    in property <color> content-color;
+    t:=Text {
+        text: content;
+        color: content-color;
+    }
+    width: t.width * 2;
+    height: t.height * 1.5;
+    border-radius: 12px;
+    drop-shadow-blur: 12px;
+    drop-shadow-color: Theme.border;
+}
+
+export component MessageList inherits VerticalLayout {
+    in-out property <[MessageData]> messages;
+
+    for message in messages: HorizontalBox {
+        alignment: message.owner == MessageOwner.User? LayoutAlignment.end : LayoutAlignment.start;
+        Message {
+            content: message.content;
+            content-color: Theme.foreground;
+            background: Theme.primary;
+
+        }
+    }
+    spacing: 12px;
+}
+
+export component Chat inherits VerticalLayout {
+    in-out property <[MessageData]> messages <=> list.messages;
+    callback onSendMsg(string);
+
+    list:=MessageList{
+        vertical-stretch: 1;
+    }
+    alignment: space-between;
+
+    Rectangle {
+        HorizontalLayout {
+            padding: 8px;
+            spacing: 8px;
+            input:= LineEdit{
+                text: "Hello world";
+                placeholder-text: "What are you thinking?";
+                
+            }
+            VeritaButton {
+                text: "Send";
+                background: transparent;
+                drop-shadow-color: transparent;
+                clicked => {
+                    onSendMsg(input.text);
+                    input.text = "";
+                }
+            }
+        }
+        border-radius: 12px;
+        background: Theme.accent;
+    }
+}

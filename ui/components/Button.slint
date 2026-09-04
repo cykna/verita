@@ -1,0 +1,23 @@
+import { Theme } from "../theme.slint";
+export component VeritaButton inherits Rectangle {
+    in-out property <string> text;
+    in-out property <color> text-color: Theme.foreground;
+    callback clicked;
+    
+    background: Theme.primary;
+    drop-shadow-color: Theme.background;
+    drop-shadow-blur: 12px;
+    border-radius: 12px;
+    t:=Text {
+        text: text;
+        color: text-color;
+        vertical-alignment: center;
+    }
+    max-width: t.width * 2;
+    max-height: t.height * 2;
+    TouchArea {
+        clicked => root.clicked();
+    }
+    
+    
+}

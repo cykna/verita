@@ -1,0 +1,43 @@
+export global DarkPalette {
+    out property<color> background: #1A1025;
+    out property<color> surface: #241535;
+    out property<color> primary: #7C3AED;
+    out property<color> accent: #A78BFA;
+    out property<color> foreground: #F3EEFB;
+    out property<color> secondary: #B9A9D9;
+    out property<color> border: #3A2854;
+    out property<color> warn: #F5A623;
+    out property<color> error: #F14668;
+    out property<color> info: #5DADE2;
+    out property<color> success: #4ADE80;
+}
+
+export global LightPalette {
+    out property<color> background: #FFFFFF;
+    out property<color> surface: #FFF3F4;
+    out property<color> primary: #E63958;
+    out property<color> accent: #FF6B81;
+    out property<color> foreground: #2B0F16;
+    out property<color> secondary: #8A4A56;
+    out property<color> border: #F3D6DA;
+    out property<color> warn: #D97706;
+    out property<color> error: #DC2626;
+    out property<color> info: #2563EB;
+    out property<color> success: #16A34A;
+}
+
+export global Theme {
+    in-out property<bool> dark-mode: false;
+
+    out property<color> background: dark-mode ? DarkPalette.background : LightPalette.background;
+    out property<color> surface: dark-mode ? DarkPalette.surface : LightPalette.surface;
+    out property<color> primary: dark-mode ? DarkPalette.primary : LightPalette.primary;
+    out property<color> accent: dark-mode ? DarkPalette.accent : LightPalette.accent;
+    out property<color> foreground: dark-mode ? DarkPalette.foreground : LightPalette.foreground;
+    out property<color> secondary: dark-mode ? DarkPalette.secondary : LightPalette.secondary;
+    out property<color> border: dark-mode ? DarkPalette.border : LightPalette.border;
+    out property<color> warn: dark-mode ? DarkPalette.warn : LightPalette.warn;
+    out property<color> error: dark-mode ? DarkPalette.error : LightPalette.error;
+    out property<color> info: dark-mode ? DarkPalette.info : LightPalette.info;
+    out property<color> success: dark-mode ? DarkPalette.success : LightPalette.success;
+}
