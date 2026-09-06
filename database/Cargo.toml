@@ -5,3 +5,4 @@ edition = "2024"
 
 [dependencies]
 sea-orm.workspace=true
+libp2p.workspace=true

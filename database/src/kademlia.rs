@@ -1,14 +1,17 @@
 pub mod records {
     use sea_orm::EntityTrait;
     use sea_orm::entity::prelude::*;
+
+    use crate::{PeerId, RecordKey};
     #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
     #[sea_orm::model]
     #[sea_orm(table_name = "kademlia_records")]
     pub struct Model {
-        #[sea_orm(primary_key)]
-        pub key: Vec<u8>,
+        #[sea_orm(primary_key, auto_increment = true)]
+        pub id: i32,
+        pub key: RecordKey,
         pub value: Vec<u8>,
-        pub publisher: Option<String>,
+        pub publisher: Option<PeerId>,
         pub expires_at: Option<DateTime>,
     }
     #[derive(Clone, Debug, PartialEq, Eq, EnumIter, DeriveRelation)]
@@ -19,13 +22,16 @@ pub mod records {
 pub mod providers {
     use sea_orm::EntityTrait;
     use sea_orm::entity::prelude::*;
+
+    use crate::{PeerId, RecordKey};
     #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
     #[sea_orm::model]
     #[sea_orm(table_name = "kademlia_providers")]
     pub struct Model {
-        #[sea_orm(primary_key)]
-        pub key: Vec<u8>,
-        pub provider: String, //peer id
+        #[sea_orm(primary_key, auto_increment = true)]
+        pub id: i32,
+        pub key: RecordKey,
+        pub provider: PeerId,
         pub expires_at: Option<DateTime>,
     }
     #[derive(Clone, Debug, PartialEq, Eq, EnumIter, DeriveRelation)]
@@ -37,15 +43,18 @@ pub mod providers {
 pub mod addresses {
     use sea_orm::EntityTrait;
     use sea_orm::entity::prelude::*;
+
+    use crate::MultiAddr;
+
     #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
     #[sea_orm::model]
     #[sea_orm(table_name = "kademlia_addresses")]
     pub struct Model {
         #[sea_orm(primary_key)]
         pub id: i32,
-        pub address: String,
+        pub address: MultiAddr,
         pub key: Vec<u8>,
-        pub provider: String, //key and provider point to the one in kademlia_providers
+        pub provider: Vec<u8>, //key and provider point to the one in kademlia_providers
     }
     #[derive(Clone, Debug, PartialEq, Eq, EnumIter, DeriveRelation)]
     pub enum Relation {}
