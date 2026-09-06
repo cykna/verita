@@ -1,3 +1,5 @@
+mod commands;
+pub use commands::*;
 use core::fmt::NumBuffer;
 use std::{
     hash::{DefaultHasher, Hash, Hasher},
@@ -7,37 +9,20 @@ use std::{
 
 use libp2p::{
     Swarm, SwarmBuilder,
-    gossipsub::{self, IdentTopic, Topic},
+    gossipsub::{self, IdentTopic},
+    kad::{self, store::MemoryStore},
     mdns,
     swarm::{NetworkBehaviour, SwarmEvent},
 };
+
 use tracing::info;
 
-use crate::{
-    application::{RequestToUi, ResponseFromUi},
-    bidirectional_channel::{Channel, Message},
-};
+use crate::{application::RequestToUi, bidirectional_channel::Channel};
 #[derive(NetworkBehaviour)]
 pub struct ChatBehavior {
     gossip: gossipsub::Behaviour,
     mdns: mdns::tokio::Behaviour,
-}
-#[derive(Debug)]
-pub enum RequestToConnection {
-    SendMessage(String),
-    ///Joins the topic with the given id
-    JoinTopic(String),
-}
-pub enum ResponseFromConnection {
-    Empty,
-    Error(color_eyre::Report),
-}
-
-impl Message for RequestToConnection {
-    type Response = ResponseFromConnection;
-}
-impl Message for ResponseFromConnection {
-    type Response = RequestToConnection;
+    kademlia: kad::Behaviour<MemoryStore>,
 }
 
 pub struct ApplicationConnection {
@@ -67,17 +52,25 @@ impl ApplicationConnection {
                     .build()
                     .map_err(std::io::Error::other)?; // Temporary hack because `build` does not return a proper `std::error::Error`.
 
+                let id = key.public().to_peer_id();
+
                 // build a gossipsub network behaviour
                 let gossip = gossipsub::Behaviour::new(
                     gossipsub::MessageAuthenticity::Signed(key.clone()),
                     gossipsub_config,
                 )?;
 
-                let mdns = mdns::tokio::Behaviour::new(
-                    mdns::Config::default(),
-                    key.public().to_peer_id(),
-                )?;
-                Ok(ChatBehavior { gossip, mdns })
+                let mdns = mdns::tokio::Behaviour::new(mdns::Config::default(), id)?;
+                let kademlia = libp2p::kad::Behaviour::with_config(
+                    id,
+                    MemoryStore::new(id),
+                    libp2p::kad::Config::default(),
+                );
+                Ok(ChatBehavior {
+                    gossip,
+                    mdns,
+                    kademlia,
+                })
             })?
             .build();
         swarm.listen_on("/ip4/0.0.0.0/udp/0/quic-v1".parse()?)?;
@@ -100,25 +93,8 @@ impl ApplicationConnection {
         event: SwarmEvent<ChatBehaviorEvent>,
     ) -> color_eyre::Result<()> {
         match event {
-            SwarmEvent::NewListenAddr { address, .. } => {
-                info!("🔥 LISTEN: {address}");
-            }
-            SwarmEvent::ConnectionEstablished {
-                peer_id, endpoint, ..
-            } => {
-                info!("🔥🔥🔥 CONNECTED: {peer_id} via {endpoint:?}");
-            }
-
-            SwarmEvent::OutgoingConnectionError { peer_id, error, .. } => {
-                info!("❌ OUTGOING ERROR: {peer_id:?}: {error}");
-            }
-
-            SwarmEvent::IncomingConnectionError { error, .. } => {
-                info!("❌ INCOMING ERROR: {error}");
-            }
             SwarmEvent::Behaviour(ChatBehaviorEvent::Mdns(mdns::Event::Discovered(list))) => {
                 for peer in list {
-                    info!("Discovered: {peer:?} FIREEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE");
                     self.swarm.behaviour_mut().gossip.add_explicit_peer(&peer.0);
                 }
             }
@@ -163,16 +139,16 @@ impl ApplicationConnection {
                 };
                 info!("To enviando mensagem uga uga");
             }
-            RequestToConnection::JoinTopic(topic_id) => {
+            RequestToConnection::JoinTopic(subscription) => {
                 if self
                     .swarm
                     .behaviour_mut()
                     .gossip
-                    .subscribe(&IdentTopic::new(&topic_id))?
+                    .subscribe(&IdentTopic::new(&subscription.id))?
                 {
-                    info!("Successfully logged in topic '{topic_id}'");
+                    info!("Successfully logged in topic '{subscription:?}'");
                 } else {
-                    info!("Already logged in topic '{topic_id}'");
+                    info!("Already logged in topic '{subscription:?}'");
                 }
             }
         }

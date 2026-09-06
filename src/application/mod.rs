@@ -1,3 +1,11 @@
+mod commands;
+mod default_service;
+mod services;
+
+pub use default_service::*;
+pub use services::*;
+
+pub use commands::*;
 use libp2p::futures::StreamExt;
 use tracing::{error, info};
 
@@ -7,50 +15,38 @@ use slint::{ComponentHandle, Model, ModelRc, ToSharedString, VecModel, Weak};
 
 use crate::{
     App, MessageData, MessageOwner,
-    bidirectional_channel::{Channel, Message},
+    application::{commands::ResponseFromUi, services::ApplicationService},
+    bidirectional_channel::Channel,
     connection::{ApplicationConnection, RequestToConnection},
-    model::subscriptions::Subscription,
-    repositories::Repository,
+    domain::subscription::{Subscription, SubscriptionRepository},
 };
 
-pub struct Application {
+pub struct Application<Service: ApplicationService + 'static> {
     app: Weak<App>,
-    connection_sender: Channel<RequestToConnection>,
     ui_receiver: Channel<ResponseFromUi>,
-    database: DatabaseConnection,
+    services: Service,
 }
 
-pub enum RequestToUi {
-    ReceivedMessage(libp2p::gossipsub::Message),
-} //req to ui
-pub enum ResponseFromUi {
-    Empty,
-}
-
-impl Message for RequestToUi {
-    type Response = ResponseFromUi;
-}
-impl Message for ResponseFromUi {
-    type Response = RequestToUi;
-}
-
-impl Application {
-    pub async fn join_topic(&self, topic: String, persist: bool) -> color_eyre::Result<()> {
+impl<S: ApplicationService> Application<S> {
+    pub async fn join_topic(&self, topic: Subscription, persist: bool) -> color_eyre::Result<()> {
         if persist {
-            self.database
-                .insert(Subscription { id: topic.clone() })
+            self.services
+                .subscription_repo()
+                .upsert(topic.clone())
                 .await?;
         }
-        self.connection_sender
-            .fire(RequestToConnection::JoinTopic(topic))
+        self.services
+            .connection_requester()
+            .join_topic(&topic.id)
             .await
     }
 
     pub async fn setup(&mut self) -> color_eyre::Result<()> {
-        for subscription in self.database.find_all().await? {
-            self.join_topic(subscription.id, false).await?;
+        for subscription in self.services.subscription_repo().find_all().await? {
+            self.join_topic(subscription, false).await?;
         }
-        self.join_topic("hello".into(), true).await?;
+        self.join_topic(Subscription { id: "hello".into() }, true)
+            .await?;
         Ok(())
     }
 
@@ -68,21 +64,22 @@ impl Application {
                 let app = app.clone();
                 let res = res.clone();
                 tokio::spawn(async move {
-                    if let Ok(_) = res
+                    let Ok(_) = res
                         .request(RequestToConnection::SendMessage(
                             message.content.to_string(),
                         ))
                         .await
-                    {
-                        let res = slint::invoke_from_event_loop(move || {
-                            if let Some(app) = app.upgrade() {
-                                let messages = app.get_messages().iter().collect::<VecModel<_>>();
-                                messages.push(message);
-                                app.set_messages(ModelRc::new(messages));
-                            }
-                        });
-                    } else {
-                    }
+                    else {
+                        return;
+                    };
+                    slint::invoke_from_event_loop(move || {
+                        if let Some(app) = app.upgrade() {
+                            let messages = app.get_messages().iter().collect::<VecModel<_>>();
+                            messages.push(message);
+                            app.set_messages(ModelRc::new(messages));
+                        }
+                    })
+                    .unwrap();
                 });
             }
         });
@@ -90,6 +87,7 @@ impl Application {
     }
 
     async fn handle_request(&mut self, req: RequestToUi) -> ResponseFromUi {
+        info!("Application received request {req:?}");
         match req {
             RequestToUi::ReceivedMessage(message) => {
                 slint::invoke_from_event_loop({
@@ -105,7 +103,8 @@ impl Application {
                             error!("Conseguiu o upgrade não bixo");
                         }
                     }
-                });
+                })
+                .unwrap();
             }
         }
         ResponseFromUi::Empty
@@ -150,10 +149,9 @@ impl Application {
         let window = Self::build_window(connection_request_channel.clone())?;
         let database = Self::load_database().await?;
         let mut application = Self {
-            database,
+            services: S::new(database, connection_request_channel),
             app: window.as_weak(),
             ui_receiver: ui_response_channel,
-            connection_sender: connection_request_channel,
         };
         application.setup().await?;
         tokio::spawn({
