@@ -1,12 +1,10 @@
-use libp2p::{gossipsub, mdns, swarm::NetworkBehaviour};
-
 use crate::application::Application;
 
 mod application;
 mod bidirectional_channel;
 mod connection;
-mod model;
-mod repositories;
+mod domain;
+mod infra;
 
 slint::include_modules!();
 
@@ -16,6 +14,6 @@ async fn main() -> color_eyre::Result<()> {
         .with_max_level(tracing::Level::DEBUG)
         .init();
 
-    Application::run().await?;
+    Application::<application::AppServices>::run().await?;
     Ok(())
 }
