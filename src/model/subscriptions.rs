@@ -1,4 +1,4 @@
-use sea_orm::{ActiveValue, DatabaseConnection, DbErr, EntityTrait, InsertResult};
+use sea_orm::{ActiveValue, EntityTrait};
 
 use sea_orm::entity::prelude::*;
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
