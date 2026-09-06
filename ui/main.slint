@@ -2,6 +2,7 @@ import { Theme } from "theme.slint";
 import { Button } from "std-widgets.slint";
 import { VeritaButton } from "components/Button.slint";
 import { Chat, MessageList, MessageData, MessageOwner } from "components/Message.slint";
+
 export component App inherits Window {
     title: "My app";
     background: Theme.background;
@@ -11,10 +12,12 @@ export component App inherits Window {
         {content: "Suamae", owner:MessageOwner.User},
         {content: "baleia", owner:MessageOwner.Them}
     ];
-    Chat {
-        onSendMsg(msg) => send-message({content: msg, owner: MessageOwner.User});
+    VerticalLayout {
         padding: 12px;
-        messages: messages;
+        Chat {
+            messages: messages;
+            onSendMsg(content) => send-message({content:content, owner: MessageOwner.User});
+        }
     }
 
 }

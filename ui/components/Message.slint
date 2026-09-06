@@ -39,35 +39,38 @@ export component MessageList inherits VerticalLayout {
     spacing: 12px;
 }
 
-export component Chat inherits VerticalLayout {
+export component Chat inherits Rectangle {
     in-out property <[MessageData]> messages <=> list.messages;
+
     callback onSendMsg(string);
+    VerticalLayout {
+        padding: root.padding;
+        list:=MessageList{
+            vertical-stretch: 1;
+        }
+        alignment: space-between;
 
-    list:=MessageList{
-        vertical-stretch: 1;
-    }
-    alignment: space-between;
+        Rectangle {
+            HorizontalLayout {
+                padding: 8px;
+                spacing: 8px;
+                input:= LineEdit{
+                    text: "Hello world";
+                    placeholder-text: "What are you thinking?";
 
-    Rectangle {
-        HorizontalLayout {
-            padding: 8px;
-            spacing: 8px;
-            input:= LineEdit{
-                text: "Hello world";
-                placeholder-text: "What are you thinking?";
-                
-            }
-            VeritaButton {
-                text: "Send";
-                background: transparent;
-                drop-shadow-color: transparent;
-                clicked => {
-                    onSendMsg(input.text);
-                    input.text = "";
+                }
+                VeritaButton {
+                    text: "Send";
+                    background: transparent;
+                    drop-shadow-color: transparent;
+                    clicked => {
+                        onSendMsg(input.text);
+                        input.text = "";
+                    }
                 }
             }
+            border-radius: 12px;
+            background: Theme.primary;
         }
-        border-radius: 12px;
-        background: Theme.accent;
     }
 }
