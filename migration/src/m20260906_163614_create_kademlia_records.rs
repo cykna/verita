@@ -11,15 +11,16 @@ impl MigrationName for Migration {
 #[async_trait::async_trait]
 impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
+        use database::kademlia::records::Column;
         manager
             .create_table(
                 Table::create()
                     .table("kademlia_records")
                     .if_not_exists()
-                    .col(blob("key").primary_key())
-                    .col(blob("value"))
-                    .col(string("publisher").null().take())
-                    .col(time("expires_at").null())
+                    .col(blob(Column::Key).primary_key())
+                    .col(blob(Column::Value).not_null())
+                    .col(string(Column::Publisher).null().take())
+                    .col(time(Column::ExpiresAt).null())
                     .take(),
             )
             .await

@@ -14,19 +14,24 @@ impl MigrationName for Migration {
 #[async_trait::async_trait]
 impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
+        use database::kademlia::addresses::Column;
+        use database::kademlia::providers::Column as ProviderColumn;
         manager
             .create_table(
                 Table::create()
                     .table("kademlia_addresses")
-                    .col(integer("id").auto_increment().primary_key())
-                    .col(blob("key"))
-                    .col(blob("provider"))
-                    .col(string("address"))
+                    .col(integer(Column::Id).auto_increment().primary_key())
+                    .col(blob(Column::Key))
+                    .col(blob(Column::Provider))
+                    .col(string(Column::Address).not_null())
                     .foreign_key(
                         ForeignKey::create()
                             .name("fk-addresses-provider")
-                            .from("kademlia_addresses", ("key", "provider"))
-                            .to("kademlia_providers", ("key", "provider"))
+                            .from("kademlia_addresses", (Column::Key, Column::Provider))
+                            .to(
+                                "kademlia_providers",
+                                (ProviderColumn::Key, ProviderColumn::Provider),
+                            )
                             .on_delete(ForeignKeyAction::Cascade)
                             .on_update(ForeignKeyAction::Cascade),
                     )

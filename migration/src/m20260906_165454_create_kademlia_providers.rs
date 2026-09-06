@@ -11,13 +11,14 @@ impl MigrationName for Migration {
 #[async_trait::async_trait]
 impl MigrationTrait for Migration {
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
+        use database::kademlia::providers::Column;
         manager
             .create_table(
                 Table::create()
                     .table("kademlia_providers")
-                    .col(blob("key").primary_key())
-                    .col(blob("provider"))
-                    .col(date("expires_at").null())
+                    .col(blob(Column::Key).primary_key())
+                    .col(blob(Column::Provider).not_null())
+                    .col(date(Column::ExpiresAt).null())
                     .take(),
             )
             .await
