@@ -16,7 +16,8 @@ impl MigrationTrait for Migration {
             .create_table(
                 Table::create()
                     .table("kademlia_providers")
-                    .col(blob(Column::Key).primary_key())
+                    .col(integer(Column::Id).primary_key().auto_increment())
+                    .col(blob(Column::Key).not_null())
                     .col(blob(Column::Provider).not_null())
                     .col(date(Column::ExpiresAt).null())
                     .take(),

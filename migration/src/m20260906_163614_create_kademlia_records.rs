@@ -17,9 +17,10 @@ impl MigrationTrait for Migration {
                 Table::create()
                     .table("kademlia_records")
                     .if_not_exists()
-                    .col(blob(Column::Key).primary_key())
+                    .col(integer(Column::Id).primary_key().auto_increment())
+                    .col(blob(Column::Key).not_null())
                     .col(blob(Column::Value).not_null())
-                    .col(string(Column::Publisher).null().take())
+                    .col(blob(Column::Publisher).null().take())
                     .col(time(Column::ExpiresAt).null())
                     .take(),
             )
