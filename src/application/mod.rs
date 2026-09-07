@@ -5,7 +5,7 @@ mod services;
 pub use default_service::*;
 pub use services::*;
 
-pub use commands::*;
+pub use commands::{KademliaAddressesQuantity, RequestToUi, ResponseFromUi};
 use libp2p::futures::StreamExt;
 use tracing::{error, info};
 
@@ -15,10 +15,13 @@ use slint::{ComponentHandle, Model, ModelRc, ToSharedString, VecModel, Weak};
 
 use crate::{
     App, MessageData, MessageOwner,
-    application::{commands::ResponseFromUi, services::ApplicationService},
+    application::services::ApplicationService,
     bidirectional_channel::Channel,
     connection::{ApplicationConnection, RequestToConnection},
-    domain::subscription::{Subscription, SubscriptionRepository},
+    domain::{
+        kademlia::KademliaRepository,
+        subscription::{Subscription, SubscriptionRepository},
+    },
 };
 
 pub struct Application<Service: ApplicationService + 'static> {
@@ -105,9 +108,18 @@ impl<S: ApplicationService> Application<S> {
                     }
                 })
                 .unwrap();
+                ResponseFromUi::Empty
+            }
+            RequestToUi::GetKademliaAddresses(_) => {
+                let addresses = self
+                    .services
+                    .kademlia_repo()
+                    .find_all_addresses()
+                    .await
+                    .unwrap();
+                ResponseFromUi::KademliaAddresses(addresses)
             }
         }
-        ResponseFromUi::Empty
     }
 
     pub async fn run() -> color_eyre::Result<()> {
@@ -116,7 +128,7 @@ impl<S: ApplicationService> Application<S> {
         let (tx, mut rx) = tokio::sync::broadcast::channel::<()>(2);
 
         tokio::spawn({
-            let mut swarm = ApplicationConnection::new(ui_request_channel)?;
+            let mut swarm = ApplicationConnection::new(ui_request_channel).await?;
             let mut rx = tx.subscribe();
 
             async move {
