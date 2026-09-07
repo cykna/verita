@@ -1,22 +1,22 @@
-use libp2p::Multiaddr;
+use std::collections::HashMap;
+
+use libp2p::{Multiaddr, PeerId};
 
 use crate::bidirectional_channel::Message;
 
-#[derive(Debug)]
-pub enum KademliaAddressesQuantity {
-    N(u32),
-    All,
-}
+pub type KademliaAddressesQuantity = Option<u64>;
 
 #[derive(Debug)]
 pub enum RequestToUi {
     ReceivedMessage(libp2p::gossipsub::Message),
+    ///Requests the Kademlia addresses of the peers in the network
     GetKademliaAddresses(KademliaAddressesQuantity),
 }
 
 #[derive(Debug)]
 pub enum ResponseFromUi {
-    KademliaAddresses(Vec<Multiaddr>),
+    ///Returns the Kademlia addresses of the peers in the network.
+    KademliaAddresses(HashMap<PeerId, Vec<Multiaddr>>),
     Empty,
 }
 

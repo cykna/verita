@@ -1,4 +1,5 @@
 mod commands;
+
 pub use commands::*;
 use core::fmt::NumBuffer;
 use std::{
@@ -8,7 +9,7 @@ use std::{
 };
 
 use libp2p::{
-    Swarm, SwarmBuilder,
+    Multiaddr, PeerId, Swarm, SwarmBuilder,
     gossipsub::{self, IdentTopic},
     kad::{self, store::MemoryStore},
     mdns,
@@ -17,7 +18,10 @@ use libp2p::{
 
 use tracing::info;
 
-use crate::{application::RequestToUi, bidirectional_channel::Channel};
+use crate::{
+    application::{KademliaAddressesQuantity, RequestToUi, ResponseFromUi},
+    bidirectional_channel::Channel,
+};
 #[derive(NetworkBehaviour)]
 pub struct ChatBehavior {
     gossip: gossipsub::Behaviour,
@@ -76,17 +80,37 @@ impl ApplicationConnection {
         swarm.listen_on("/ip4/0.0.0.0/udp/0/quic-v1".parse()?)?;
         Ok(swarm)
     }
-    pub fn new(ui_requester: Channel<RequestToUi>) -> color_eyre::Result<Self> {
+    pub async fn new(ui_requester: Channel<RequestToUi>) -> color_eyre::Result<Self> {
         let swarm = Self::build_swarm()?;
         let mut out = Self {
             swarm,
             ui_requester,
         };
-        out.setup();
+        out.setup().await?;
         Ok(out)
     }
 
-    fn setup(&mut self) {}
+    async fn setup(&mut self) -> color_eyre::Result<()> {
+        let requester = self
+            .ui_requester
+            .request(RequestToUi::GetKademliaAddresses(None))
+            .await?;
+        let ResponseFromUi::KademliaAddresses(addresses) = requester else {
+            unreachable!("Kademlia addresses request should return correct response");
+        };
+        for (peer, entries) in addresses {
+            for entry in entries {
+                self.save_peer(peer, entry);
+            }
+        }
+
+        Ok(())
+    }
+
+    ///Saves the given `peer` knowing its address is the given `addr`
+    fn save_peer(&mut self, peer: PeerId, addr: Multiaddr) {
+        self.swarm.behaviour_mut().kademlia.add_address(&peer, addr);
+    }
 
     pub async fn handle_event(
         &mut self,

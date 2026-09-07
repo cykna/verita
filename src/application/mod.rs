@@ -110,11 +110,11 @@ impl<S: ApplicationService> Application<S> {
                 .unwrap();
                 ResponseFromUi::Empty
             }
-            RequestToUi::GetKademliaAddresses(_) => {
+            RequestToUi::GetKademliaAddresses(quantity) => {
                 let addresses = self
                     .services
                     .kademlia_repo()
-                    .find_all_addresses()
+                    .find_addresses(quantity)
                     .await
                     .unwrap();
                 ResponseFromUi::KademliaAddresses(addresses)

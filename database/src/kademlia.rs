@@ -44,7 +44,7 @@ pub mod addresses {
     use sea_orm::EntityTrait;
     use sea_orm::entity::prelude::*;
 
-    use crate::MultiAddr;
+    use crate::{MultiAddr, PeerId, RecordKey};
 
     #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
     #[sea_orm::model]
@@ -53,8 +53,8 @@ pub mod addresses {
         #[sea_orm(primary_key)]
         pub id: i32,
         pub address: MultiAddr,
-        pub key: Vec<u8>,
-        pub provider: Vec<u8>, //key and provider point to the one in kademlia_providers
+        pub key: RecordKey,
+        pub provider: PeerId, //key and provider point to the one in kademlia_providers
     }
     #[derive(Clone, Debug, PartialEq, Eq, EnumIter, DeriveRelation)]
     pub enum Relation {}

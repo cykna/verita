@@ -1,6 +1,8 @@
+use std::collections::HashMap;
+
 use libp2p::{PeerId, kad::RecordKey};
 
-use crate::domain::error::RepositoryError;
+use crate::{application::KademliaAddressesQuantity, domain::error::RepositoryError};
 
 pub mod converters {
     use std::time::{Instant, SystemTime};
@@ -81,10 +83,16 @@ pub mod converters {
 
 #[async_trait::async_trait]
 pub trait KademliaRepository {
+    ///Finds all the addresses to find the given `provider`
     async fn find_addresses_provided_by(
         &self,
-        key: RecordKey,
         provider: PeerId,
+        quantity: KademliaAddressesQuantity,
     ) -> Result<Vec<libp2p::Multiaddr>, RepositoryError>;
-    async fn find_all_addresses(&self) -> Result<Vec<libp2p::Multiaddr>, RepositoryError>;
+    ///Finds the addresses for the given `quantity` of peers.
+    ///The given quantity limits the number of peers to find, even though the total quantity of addresses provided might not be equals to the provided `quantity`
+    async fn find_addresses(
+        &self,
+        quantity: KademliaAddressesQuantity,
+    ) -> Result<HashMap<PeerId, Vec<libp2p::Multiaddr>>, RepositoryError>;
 }
