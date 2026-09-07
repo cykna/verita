@@ -29,7 +29,7 @@ impl SubscriptionRepository for SeaOrmSubscriptionRepo {
         Ok(database::subscriptions::Entity::find()
             .all(&self.connection)
             .await
-            .map_err(RepositoryError::DatabaseError)?
+            .map_err(|e| RepositoryError::Internal(color_eyre::Report::from(e)))?
             .into_iter()
             .map(|s| Subscription { id: s.id })
             .collect::<Vec<_>>())
@@ -47,7 +47,7 @@ impl SubscriptionRepository for SeaOrmSubscriptionRepo {
         .await;
         match result {
             Ok(_) | Err(DbErr::RecordNotInserted) => Ok(()),
-            Err(e) => Err(RepositoryError::DatabaseError(e)),
+            Err(e) => Err(RepositoryError::Internal(color_eyre::Report::from(e))),
         }
     }
 }
