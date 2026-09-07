@@ -23,7 +23,7 @@ impl MigrationTrait for Migration {
                     .col(integer(Column::Id).auto_increment().primary_key())
                     .col(blob(Column::Key))
                     .col(blob(Column::Provider))
-                    .col(string(Column::Address).not_null())
+                    .col(blob(Column::Address).not_null())
                     .foreign_key(
                         ForeignKey::create()
                             .name("fk-addresses-provider")

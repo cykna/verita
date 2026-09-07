@@ -41,10 +41,9 @@ impl KademliaRepository for SeaOrmKademliaRepo {
             .all(&self.connection)
             .await
             .map_err(|e| RepositoryError::Internal(e.into()))?;
-        addresses
+        Ok(addresses
             .into_iter()
             .map(converters::sea_to_address)
-            .collect::<Result<Vec<_>, _>>()
-            .map_err(RepositoryError::InvalidContent)
+            .collect::<Vec<_>>())
     }
 }
