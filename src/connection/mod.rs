@@ -103,6 +103,11 @@ impl ApplicationConnection {
                 self.save_peer(peer, entry);
             }
         }
+        self.swarm
+            .behaviour_mut()
+            .kademlia
+            .bootstrap()
+            .map_err(color_eyre::Report::new)?;
 
         Ok(())
     }
