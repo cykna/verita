@@ -17,7 +17,7 @@ use crate::{
     App, MessageData, MessageOwner,
     application::services::ApplicationService,
     bidirectional_channel::Channel,
-    connection::{ApplicationConnection, RequestToConnection},
+    connection::{ApplicationConnection, RequestToConnection, ResponseFromConnection},
     domain::{
         kademlia::KademliaRepository,
         subscription::{Subscription, SubscriptionRepository},
@@ -90,7 +90,6 @@ impl<S: ApplicationService> Application<S> {
     }
 
     async fn handle_request(&mut self, req: RequestToUi) -> ResponseFromUi {
-        info!("Application received request {req:?}");
         match req {
             RequestToUi::ReceivedMessage(message) => {
                 slint::invoke_from_event_loop({
@@ -101,9 +100,7 @@ impl<S: ApplicationService> Application<S> {
                                 content: String::from_utf8_lossy(&message.data).to_shared_string(),
                                 owner: MessageOwner::Them,
                             });
-                            info!("Invokated received message wow");
                         } else {
-                            error!("Conseguiu o upgrade não bixo");
                         }
                     }
                 })
@@ -129,9 +126,15 @@ impl<S: ApplicationService> Application<S> {
 
         tokio::spawn({
             let mut swarm = ApplicationConnection::new(ui_request_channel).await?;
-            let mut rx = tx.subscribe();
 
+            let mut rx = tx.subscribe();
+            let tx = tx.clone();
             async move {
+                if let Err(e) = swarm.setup().await {
+                    error!("Error while setup: {e}");
+                    tx.send(())?;
+                    return Err(e);
+                };
                 loop {
                     tokio::select! {
                         Ok(_) = rx.recv() => {
@@ -145,21 +148,24 @@ impl<S: ApplicationService> Application<S> {
                             let response = match swarm.handle_request(req).await {
                                 Ok(res) => res,
                                 Err(e) => {
-                                    error!("{e:?}");
-                                    continue;
+                                    error!("Error during request handling: '{e:?}'");
+                                    ResponseFromConnection::Empty
                                 }
                             };
                             if let Err(e) = connection_response_channel.fire(response).await {
-                                error!("{e:?}");
+                                error!("Couldnt fire the connection response back: '{e:?}'");
                             }
                         }
 
                     }
                 }
+                Ok::<(), color_eyre::Report>(())
             }
         });
         let window = Self::build_window(connection_request_channel.clone())?;
+
         let database = Self::load_database().await?;
+
         let mut application = Self {
             services: S::new(database, connection_request_channel),
             app: window.as_weak(),
@@ -170,7 +176,10 @@ impl<S: ApplicationService> Application<S> {
             async move {
                 loop {
                     tokio::select! {
-                        Ok(_) = rx.recv() => break,
+                        Ok(_) = rx.recv() => {
+                            slint::quit_event_loop().unwrap();
+                            break;
+                        },
                         Ok(req) = application.ui_receiver.recv() => {
                             let response = application.handle_request(req).await;
                             if let Err(e) = application.ui_receiver.fire(response).await {

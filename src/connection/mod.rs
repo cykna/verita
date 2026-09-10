@@ -82,15 +82,13 @@ impl ApplicationConnection {
     }
     pub async fn new(ui_requester: Channel<RequestToUi>) -> color_eyre::Result<Self> {
         let swarm = Self::build_swarm()?;
-        let mut out = Self {
+        Ok(Self {
             swarm,
             ui_requester,
-        };
-        out.setup().await?;
-        Ok(out)
+        })
     }
 
-    async fn setup(&mut self) -> color_eyre::Result<()> {
+    pub async fn setup(&mut self) -> color_eyre::Result<()> {
         let requester = self
             .ui_requester
             .request(RequestToUi::GetKademliaAddresses(None))
@@ -103,11 +101,9 @@ impl ApplicationConnection {
                 self.save_peer(peer, entry);
             }
         }
-        self.swarm
-            .behaviour_mut()
-            .kademlia
-            .bootstrap()
-            .map_err(color_eyre::Report::new)?;
+        if let Err(e) = self.swarm.behaviour_mut().kademlia.bootstrap() {
+            tracing::error!("{e}; Ignoring since some might be able to interact later");
+        };
 
         Ok(())
     }
