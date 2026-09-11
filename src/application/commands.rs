@@ -3,8 +3,11 @@ use std::collections::HashMap;
 use common::Message;
 use libp2p::{Multiaddr, PeerId};
 
+<<<<<<< HEAD
 use crate::NotificationData;
 
+=======
+>>>>>>> 832a380 (chore: updated usage of channel to sender/receiver)
 pub type KademliaAddressesQuantity = Option<u64>;
 
 #[derive(Debug)]

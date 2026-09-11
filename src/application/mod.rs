@@ -3,8 +3,12 @@ mod commands;
 mod default_service;
 mod services;
 
+<<<<<<< HEAD
 use arboard::Clipboard;
 use common::Receiver;
+=======
+use common::{Receiver, Sender};
+>>>>>>> 832a380 (chore: updated usage of channel to sender/receiver)
 pub use default_service::*;
 pub use services::*;
 
@@ -18,8 +22,15 @@ use slint::{ComponentHandle, ToSharedString, Weak};
 
 use crate::{
     App, MessageData, MessageOwner,
+<<<<<<< HEAD
     application::{app::notifications::notify, services::ApplicationService},
     connection::{ApplicationConnection, ResponseFromConnection},
+=======
+    application::services::ApplicationService,
+    connection::{
+        ApplicationConnection, InviteResponse, RequestToConnection, ResponseFromConnection,
+    },
+>>>>>>> 832a380 (chore: updated usage of channel to sender/receiver)
     domain::{
         kademlia::KademliaRepository,
         subscription::{Subscription, SubscriptionRepository},
@@ -63,6 +74,89 @@ impl<S: ApplicationService> Application<S> {
         Ok(database)
     }
 
+<<<<<<< HEAD
+=======
+    pub fn build_window(res: Sender<RequestToConnection>) -> color_eyre::Result<App> {
+        let app = App::new()?;
+        app.on_send_message({
+            let app = app.as_weak();
+            let res = res.clone();
+            move |message| {
+                let app = app.clone();
+                let res = res.clone();
+                tokio::spawn(async move {
+                    let Ok(_) = res
+                        .request(RequestToConnection::SendMessage(
+                            message.content.to_string(),
+                        ))
+                        .await
+                    else {
+                        return;
+                    };
+                    slint::invoke_from_event_loop(move || {
+                        if let Some(app) = app.upgrade() {
+                            let messages = app.get_messages().iter().collect::<VecModel<_>>();
+                            messages.push(message);
+                            app.set_messages(ModelRc::new(messages));
+                        }
+                    })
+                    .unwrap();
+                });
+            }
+        });
+        app.on_request_invite({
+            let app = app.as_weak();
+            let res = res.clone();
+            move |duration| {
+                let app = app.clone();
+                let res = res.clone();
+                tokio::spawn(async move {
+                    let invite = match res
+                        .request(RequestToConnection::GenerateInvite(
+                            std::time::Duration::from_secs(duration as u64),
+                        ))
+                        .await
+                    {
+                        Ok(ResponseFromConnection::Invite(invite)) => invite,
+                        Ok(e) => return Err(error!("Invalid response {e:?}")),
+                        Err(e) => {
+                            return Err(error!("Internal error during request for invite: {e}"));
+                        }
+                    };
+                    slint::invoke_from_event_loop(move || {
+                        let Some(app) = app.upgrade() else {
+                            return;
+                        };
+                        match invite {
+                            InviteResponse::InWait => {
+                                let initializing_text = "Initializing yet".to_shared_string();
+                                app.set_invite(crate::Invite {
+                                    address: initializing_text.clone(),
+                                    peer: initializing_text.clone(),
+                                    timestamp: 0,
+                                    valid: true,
+                                });
+                            }
+                            InviteResponse::Success(invite) => {
+                                let metadata = invite.metadata();
+                                app.set_invite(crate::Invite {
+                                    address: metadata.address.to_shared_string(),
+                                    peer: metadata.peer.to_shared_string(),
+                                    timestamp: metadata.timestamp as i32,
+                                    valid: true,
+                                });
+                            }
+                        }
+                    })
+                    .unwrap();
+                    Ok(())
+                });
+            }
+        });
+        Ok(app)
+    }
+
+>>>>>>> 832a380 (chore: updated usage of channel to sender/receiver)
     async fn handle_request(&mut self, req: RequestToUi) -> ResponseFromUi {
         match req {
             RequestToUi::ReceivedMessage(message) => {
@@ -163,7 +257,10 @@ impl<S: ApplicationService> Application<S> {
             services,
             app: window.as_weak(),
             ui_receiver: ui_listener,
+<<<<<<< HEAD
             clipboard,
+=======
+>>>>>>> 832a380 (chore: updated usage of channel to sender/receiver)
         };
         application.setup().await?;
         tokio::spawn({

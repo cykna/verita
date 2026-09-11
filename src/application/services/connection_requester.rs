@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 use color_eyre::eyre::eyre;
 use common::Sender;
 use libp2p::PeerId;
@@ -9,10 +10,16 @@ use crate::{
         invites::network::DirectInvite, kademlia::KademliaRepository, subscription::Subscription,
     },
 };
+=======
+use common::Sender;
+
+use crate::{connection::RequestToConnection, domain::subscription::Subscription};
+>>>>>>> 832a380 (chore: updated usage of channel to sender/receiver)
 
 #[derive(Clone)]
 pub struct ConnectionRequester {
     channel: Sender<RequestToConnection>,
+<<<<<<< HEAD
 }
 
 pub struct InsertInviteDescriptor<'a> {
@@ -24,6 +31,8 @@ pub struct InsertInviteDescriptor<'a> {
 pub enum InsertInviteResult {
     AlreadyExists,
     Success,
+=======
+>>>>>>> 832a380 (chore: updated usage of channel to sender/receiver)
 }
 
 impl ConnectionRequester {
@@ -37,6 +46,7 @@ impl ConnectionRequester {
             }))
             .await?;
         Ok(())
+<<<<<<< HEAD
     }
 
     pub async fn generate_invite(&self, secs: u64) -> color_eyre::Result<DirectInvite> {
@@ -86,5 +96,7 @@ impl ConnectionRequester {
             .fire(RequestToConnection::InsertInvite(address, peer))
             .await?;
         Ok(InsertInviteResult::Success)
+=======
+>>>>>>> 832a380 (chore: updated usage of channel to sender/receiver)
     }
 }
