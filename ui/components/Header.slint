@@ -1,0 +1,24 @@
+import { VeritaButton } from "Button.slint";
+import { UserInformation } from "UserInformation.slint";
+import { Theme } from "../theme.slint";
+export component Header inherits Rectangle{
+    height: self.min-height;
+    background: Theme.accent;
+    callback request-invite(int);
+    HorizontalLayout {
+        padding: parent.padding;
+        alignment: space-between;
+        VeritaButton{
+            UserInformation {}
+            padding: 12px;
+            clicked => {
+                request-invite(10);
+            }
+        }
+        VeritaButton {
+            Text {
+                text: "Hello world";
+            }
+        }
+    }
+}
