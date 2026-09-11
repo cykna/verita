@@ -1,8 +1,7 @@
 use std::collections::HashMap;
 
+use common::Message;
 use libp2p::{Multiaddr, PeerId};
-
-use crate::bidirectional_channel::Message;
 
 pub type KademliaAddressesQuantity = Option<u64>;
 

@@ -2,6 +2,7 @@ mod commands;
 mod default_service;
 mod services;
 
+use common::{Receiver, Sender};
 pub use default_service::*;
 pub use services::*;
 
@@ -16,8 +17,9 @@ use slint::{ComponentHandle, Model, ModelRc, ToSharedString, VecModel, Weak};
 use crate::{
     App, MessageData, MessageOwner,
     application::services::ApplicationService,
-    bidirectional_channel::Channel,
-    connection::{ApplicationConnection, RequestToConnection, ResponseFromConnection},
+    connection::{
+        ApplicationConnection, InviteResponse, RequestToConnection, ResponseFromConnection,
+    },
     domain::{
         kademlia::KademliaRepository,
         subscription::{Subscription, SubscriptionRepository},
@@ -26,7 +28,7 @@ use crate::{
 
 pub struct Application<Service: ApplicationService + 'static> {
     app: Weak<App>,
-    ui_receiver: Channel<ResponseFromUi>,
+    ui_receiver: Receiver<RequestToUi>,
     services: Service,
 }
 
@@ -59,10 +61,11 @@ impl<S: ApplicationService> Application<S> {
         Ok(database)
     }
 
-    pub fn build_window(res: Channel<RequestToConnection>) -> color_eyre::Result<App> {
+    pub fn build_window(res: Sender<RequestToConnection>) -> color_eyre::Result<App> {
         let app = App::new()?;
         app.on_send_message({
             let app = app.as_weak();
+            let res = res.clone();
             move |message| {
                 let app = app.clone();
                 let res = res.clone();
@@ -83,6 +86,55 @@ impl<S: ApplicationService> Application<S> {
                         }
                     })
                     .unwrap();
+                });
+            }
+        });
+        app.on_request_invite({
+            let app = app.as_weak();
+            let res = res.clone();
+            move |duration| {
+                let app = app.clone();
+                let res = res.clone();
+                tokio::spawn(async move {
+                    let invite = match res
+                        .request(RequestToConnection::GenerateInvite(
+                            std::time::Duration::from_secs(duration as u64),
+                        ))
+                        .await
+                    {
+                        Ok(ResponseFromConnection::Invite(invite)) => invite,
+                        Ok(e) => return Err(error!("Invalid response {e:?}")),
+                        Err(e) => {
+                            return Err(error!("Internal error during request for invite: {e}"));
+                        }
+                    };
+                    slint::invoke_from_event_loop(move || {
+                        let Some(app) = app.upgrade() else {
+                            return;
+                        };
+                        match invite {
+                            InviteResponse::InWait => {
+                                let initializing_text = "Initializing yet".to_shared_string();
+                                app.set_invite(crate::Invite {
+                                    address: initializing_text.clone(),
+                                    peer: initializing_text.clone(),
+                                    timestamp: 0,
+                                    valid: true,
+                                });
+                            }
+                            InviteResponse::Success(invite) => {
+                                let metadata = invite.metadata();
+                                app.set_invite(crate::Invite {
+                                    address: metadata.address.to_shared_string(),
+                                    peer: metadata.peer.to_shared_string(),
+                                    timestamp: metadata.timestamp as i32,
+                                    valid: true,
+                                });
+                            }
+                        }
+                    })
+                    .unwrap();
+                    Ok(())
                 });
             }
         });
@@ -120,12 +172,12 @@ impl<S: ApplicationService> Application<S> {
     }
 
     pub async fn run() -> color_eyre::Result<()> {
-        let (ui_request_channel, ui_response_channel) = Channel::new();
-        let (connection_request_channel, connection_response_channel) = Channel::new();
+        let (ui_requester, ui_listener) = common::channel::<RequestToUi>();
+        let (connection_request_channel, connection_response_channel) = common::channel();
         let (tx, mut rx) = tokio::sync::broadcast::channel::<()>(2);
 
         tokio::spawn({
-            let mut swarm = ApplicationConnection::new(ui_request_channel).await?;
+            let mut swarm = ApplicationConnection::new(ui_requester).await?;
 
             let mut rx = tx.subscribe();
             let tx = tx.clone();
@@ -144,15 +196,16 @@ impl<S: ApplicationService> Application<S> {
                             error!("{e:?}");
                             continue;
                         },
-                        Ok(req) = connection_response_channel.recv() => {
+                        Ok((req, responder)) = connection_response_channel.recv() => {
                             let response = match swarm.handle_request(req).await {
                                 Ok(res) => res,
                                 Err(e) => {
                                     error!("Error during request handling: '{e:?}'");
-                                    ResponseFromConnection::Empty
+                                    ResponseFromConnection::Error(e)
                                 }
                             };
-                            if let Err(e) = connection_response_channel.fire(response).await {
+
+                            if let Some(responder) = responder && let Err(e) = responder.send_async(response).await {
                                 error!("Couldnt fire the connection response back: '{e:?}'");
                             }
                         }
@@ -169,7 +222,7 @@ impl<S: ApplicationService> Application<S> {
         let mut application = Self {
             services: S::new(database, connection_request_channel),
             app: window.as_weak(),
-            ui_receiver: ui_response_channel,
+            ui_receiver: ui_listener,
         };
         application.setup().await?;
         tokio::spawn({
@@ -180,9 +233,9 @@ impl<S: ApplicationService> Application<S> {
                             slint::quit_event_loop().unwrap();
                             break;
                         },
-                        Ok(req) = application.ui_receiver.recv() => {
+                        Ok((req, responder)) = application.ui_receiver.recv() => {
                             let response = application.handle_request(req).await;
-                            if let Err(e) = application.ui_receiver.fire(response).await {
+                            if let Some(responder) = responder && let Err(e) = responder.send_async(response).await {
                                 error!("{e}");
                                 break;
                             }

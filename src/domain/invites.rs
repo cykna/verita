@@ -1,6 +1,6 @@
 use argon2::{Algorithm::Argon2d, Argon2, Params, PasswordHasher};
 use bytes::{BufMut, Bytes, BytesMut};
-use chacha20poly1305::{XNonce, aead::Aead};
+use chacha20poly1305::{XChaCha20Poly1305, XNonce, aead::Aead};
 use hmac::{Hmac, KeyInit, Mac};
 use libp2p::{Multiaddr, PeerId};
 use rand::Rng;
@@ -28,12 +28,12 @@ mod peer_id_serde {
     }
 }
 ///An invite is a way to find another user on the web. It contains its address, Id, and metadata to check if the content is properly assigned, valid, and etc.
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct DirectInviteMetadata {
-    address: Multiaddr,
+    pub address: Multiaddr,
     #[serde(with = "peer_id_serde")]
-    peer: PeerId,
-    timestamp: u64,
+    pub peer: PeerId,
+    pub timestamp: u64,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -45,6 +45,7 @@ pub struct DirectInviteRaw {
     signature: [u8; 32],
 }
 
+#[derive(Debug)]
 pub struct DirectInvite {
     metadata: DirectInviteMetadata,
     ///Salt used to hash the contents of the metadata
@@ -96,6 +97,10 @@ impl DirectInvite {
         }
     }
 
+    pub fn metadata(&self) -> &DirectInviteMetadata {
+        &self.metadata
+    }
+
     ///Returns the raw representation of a direct invite to be sent across the network
     pub fn as_raw(
         self,
@@ -116,7 +121,7 @@ impl DirectInvite {
         };
 
         let metadata = postcard::to_allocvec(&self.metadata)?;
-        let encrypt_metadata = chacha20poly1305::XChaCha20Poly1305::new_from_slice(&crypto_key)?
+        let encrypt_metadata = XChaCha20Poly1305::new_from_slice(&crypto_key)?
             .encrypt(&XNonce::try_from(nonce)?, metadata.as_ref())?;
         hmac.update(&encrypt_metadata);
         let signature = hmac.finalize();

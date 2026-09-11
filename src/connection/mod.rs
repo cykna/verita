@@ -1,6 +1,7 @@
 mod commands;
 
 pub use commands::*;
+use common::Sender;
 use core::fmt::NumBuffer;
 use std::{
     hash::{DefaultHasher, Hash, Hasher},
@@ -19,8 +20,8 @@ use libp2p::{
 use tracing::info;
 
 use crate::{
-    application::{KademliaAddressesQuantity, RequestToUi, ResponseFromUi},
-    bidirectional_channel::Channel,
+    application::{RequestToUi, ResponseFromUi},
+    domain::invites::{DirectInvite, DirectInviteMetadata},
 };
 #[derive(NetworkBehaviour)]
 pub struct ChatBehavior {
@@ -31,7 +32,7 @@ pub struct ChatBehavior {
 
 pub struct ApplicationConnection {
     swarm: Swarm<ChatBehavior>,
-    ui_requester: Channel<RequestToUi>,
+    ui_requester: Sender<RequestToUi>,
 }
 
 impl ApplicationConnection {
@@ -80,7 +81,7 @@ impl ApplicationConnection {
         swarm.listen_on("/ip4/0.0.0.0/udp/0/quic-v1".parse()?)?;
         Ok(swarm)
     }
-    pub async fn new(ui_requester: Channel<RequestToUi>) -> color_eyre::Result<Self> {
+    pub async fn new(ui_requester: Sender<RequestToUi>) -> color_eyre::Result<Self> {
         let swarm = Self::build_swarm()?;
         Ok(Self {
             swarm,
@@ -153,6 +154,26 @@ impl ApplicationConnection {
         request: RequestToConnection,
     ) -> color_eyre::Result<ResponseFromConnection> {
         match request {
+            RequestToConnection::GenerateInvite(timestamp) => {
+                println!("Eu hein, isso retorna ResponseFromConnection::Invite");
+                let timestamp = std::time::SystemTime::now()
+                    .checked_add(timestamp)
+                    .unwrap()
+                    .duration_since(std::time::UNIX_EPOCH)?
+                    .as_secs();
+                if let Some(listener) = self.swarm.listeners().next() {
+                    let metadata = DirectInviteMetadata::new(
+                        listener.clone(),
+                        *self.swarm.local_peer_id(),
+                        timestamp,
+                    );
+                    Ok(ResponseFromConnection::Invite(InviteResponse::Success(
+                        DirectInvite::new(metadata),
+                    )))
+                } else {
+                    Ok(ResponseFromConnection::Invite(InviteResponse::InWait))
+                }
+            }
             RequestToConnection::SendMessage(msg) => {
                 if let Err(e) = self
                     .swarm
@@ -163,6 +184,7 @@ impl ApplicationConnection {
                     info!("Erro? {e}");
                 };
                 info!("To enviando mensagem uga uga");
+                Ok(ResponseFromConnection::None)
             }
             RequestToConnection::JoinTopic(subscription) => {
                 if self
@@ -175,9 +197,9 @@ impl ApplicationConnection {
                 } else {
                     info!("Already logged in topic '{subscription:?}'");
                 }
+                Ok(ResponseFromConnection::None)
             }
         }
-        Ok(ResponseFromConnection::Empty)
     }
 }
 
