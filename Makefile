@@ -1,4 +1,22 @@
-LUCIDE_PATH:= $(shell cargo build 2>&1 | grep "LUCIDE ICON PATH" | sed 's/.*LUCIDE ICON PATH: "//' | sed 's/"$$//')
+LUCIDE_PATH := $(shell cargo build 2>&1 | grep "LUCIDE ICON PATH" | sed 's/.*LUCIDE ICON PATH: "//' | sed 's/"$$//')
+ZED_DIR := .zed
+ZED_SETTINGS := $(ZED_DIR)/settings.json
+.PHONY: setup
+setup:
+	@mkdir -p $(ZED_DIR)
+	@printf '%s\n' \
+		'{' \
+		'  "lsp": {' \
+		'    "slint": {' \
+		'      "binary": {' \
+		'        "arguments": [' \
+		'          "-L",' \
+		'          "lucide=$(LUCIDE_PATH)"' \
+		'        ]' \
+		'      }' \
+		'    }' \
+		'  }' \
+		'}' > $(ZED_SETTINGS)
 
 preview:
 	slint-viewer ui/main.slint --auto-reload -L "lucide=$(LUCIDE_PATH)"
