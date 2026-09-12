@@ -11,18 +11,14 @@ pub enum RequestToConnection {
     JoinTopic(Subscription),
     ///Creates an invite that will be kept alive until the given timestamp
     GenerateInvite(Duration),
-}
-
-#[derive(Debug)]
-pub enum InviteResponse {
-    InWait,
-    Success(DirectInvite),
+    GrantPrivateKey,
 }
 
 #[derive(Debug)]
 pub enum ResponseFromConnection {
     None,
-    Invite(InviteResponse),
+    Invite(DirectInvite),
+    PrivateKey([u8; 32]),
     Error(color_eyre::Report),
 }
 

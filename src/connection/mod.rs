@@ -154,8 +154,9 @@ impl ApplicationConnection {
         request: RequestToConnection,
     ) -> color_eyre::Result<ResponseFromConnection> {
         match request {
+            RequestToConnection::GrantPrivateKey => Ok(ResponseFromConnection::PrivateKey([0; 32])),
+
             RequestToConnection::GenerateInvite(timestamp) => {
-                println!("Eu hein, isso retorna ResponseFromConnection::Invite");
                 let timestamp = std::time::SystemTime::now()
                     .checked_add(timestamp)
                     .unwrap()
@@ -167,11 +168,12 @@ impl ApplicationConnection {
                         *self.swarm.local_peer_id(),
                         timestamp,
                     );
-                    Ok(ResponseFromConnection::Invite(InviteResponse::Success(
-                        DirectInvite::new(metadata),
-                    )))
+                    Ok(ResponseFromConnection::Invite(DirectInvite::new(metadata)))
                 } else {
-                    Ok(ResponseFromConnection::Invite(InviteResponse::InWait))
+                    tracing::error!(
+                        "There should be a listener for the client. Returning none response"
+                    );
+                    Ok(ResponseFromConnection::None)
                 }
             }
             RequestToConnection::SendMessage(msg) => {

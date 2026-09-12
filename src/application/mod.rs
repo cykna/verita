@@ -2,6 +2,7 @@ mod commands;
 mod default_service;
 mod services;
 
+use arboard::Clipboard;
 use common::{Receiver, Sender};
 pub use default_service::*;
 pub use services::*;
@@ -17,9 +18,7 @@ use slint::{ComponentHandle, Model, ModelRc, ToSharedString, VecModel, Weak};
 use crate::{
     App, MessageData, MessageOwner,
     application::services::ApplicationService,
-    connection::{
-        ApplicationConnection, InviteResponse, RequestToConnection, ResponseFromConnection,
-    },
+    connection::{ApplicationConnection, RequestToConnection, ResponseFromConnection},
     domain::{
         kademlia::KademliaRepository,
         subscription::{Subscription, SubscriptionRepository},
@@ -30,6 +29,7 @@ pub struct Application<Service: ApplicationService + 'static> {
     app: Weak<App>,
     ui_receiver: Receiver<RequestToUi>,
     services: Service,
+    clipboard: std::sync::Arc<std::sync::RwLock<Clipboard>>,
 }
 
 impl<S: ApplicationService> Application<S> {
@@ -61,7 +61,10 @@ impl<S: ApplicationService> Application<S> {
         Ok(database)
     }
 
-    pub fn build_window(res: Sender<RequestToConnection>) -> color_eyre::Result<App> {
+    pub fn build_window(
+        res: Sender<RequestToConnection>,
+        clipboard: std::sync::Arc<std::sync::RwLock<Clipboard>>,
+    ) -> color_eyre::Result<App> {
         let app = App::new()?;
         app.on_send_message({
             let app = app.as_weak();
@@ -90,11 +93,9 @@ impl<S: ApplicationService> Application<S> {
             }
         });
         app.on_request_invite({
-            let app = app.as_weak();
-            let res = res.clone();
-            move |duration| {
-                let app = app.clone();
+            move |duration, password| {
                 let res = res.clone();
+                let clipboard = clipboard.clone();
                 tokio::spawn(async move {
                     let invite = match res
                         .request(RequestToConnection::GenerateInvite(
@@ -108,32 +109,34 @@ impl<S: ApplicationService> Application<S> {
                             return Err(error!("Internal error during request for invite: {e}"));
                         }
                     };
-                    slint::invoke_from_event_loop(move || {
-                        let Some(app) = app.upgrade() else {
-                            return;
-                        };
-                        match invite {
-                            InviteResponse::InWait => {
-                                let initializing_text = "Initializing yet".to_shared_string();
-                                app.set_invite(crate::Invite {
-                                    address: initializing_text.clone(),
-                                    peer: initializing_text.clone(),
-                                    timestamp: 0,
-                                    valid: true,
-                                });
-                            }
-                            InviteResponse::Success(invite) => {
-                                let metadata = invite.metadata();
-                                app.set_invite(crate::Invite {
-                                    address: metadata.address.to_shared_string(),
-                                    peer: metadata.peer.to_shared_string(),
-                                    timestamp: metadata.timestamp as i32,
-                                    valid: true,
-                                });
-                            }
+                    let private_key = match res.request(RequestToConnection::GrantPrivateKey).await
+                    {
+                        Ok(ResponseFromConnection::PrivateKey(key)) => key,
+                        Ok(e) => return Err(error!("Invalid response {e:?}")),
+                        Err(e) => {
+                            return Err(error!("Internal error during request for invite: {e}"));
                         }
-                    })
-                    .unwrap();
+                    };
+
+                    let raw_invite = {
+                        let temp = invite
+                            .as_raw(&private_key, password.as_bytes())
+                            .expect("Couldn't generate raw invite");
+                        postcard::to_allocvec(&temp).unwrap()
+                    };
+                    let bs58_invite = bs58::encode(raw_invite).into_string();
+
+                    {
+                        let mut lock = clipboard.write().unwrap();
+                        info!("Writing into clipboard");
+                        lock.set_text(bs58_invite)
+                            .expect("Should be able to store the invite on clipboard");
+                        info!(
+                            "Successfully wrote on clipboard {}",
+                            lock.get_text().unwrap()
+                        );
+                    }
+
                     Ok(())
                 });
             }
@@ -215,7 +218,8 @@ impl<S: ApplicationService> Application<S> {
                 Ok::<(), color_eyre::Report>(())
             }
         });
-        let window = Self::build_window(connection_request_channel.clone())?;
+        let clipboard = std::sync::Arc::new(std::sync::RwLock::new(Clipboard::new().unwrap()));
+        let window = Self::build_window(connection_request_channel.clone(), clipboard.clone())?;
 
         let database = Self::load_database().await?;
 
@@ -223,6 +227,7 @@ impl<S: ApplicationService> Application<S> {
             services: S::new(database, connection_request_channel),
             app: window.as_weak(),
             ui_receiver: ui_listener,
+            clipboard,
         };
         application.setup().await?;
         tokio::spawn({
