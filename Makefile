@@ -1,4 +1,10 @@
-LUCIDE_PATH := $(shell cargo build 2>&1 | grep "LUCIDE ICON PATH" | sed 's/.*LUCIDE ICON PATH: "//' | sed 's/"$$//')
+LUCIDE_PATH := $(shell \
+	if [ -f .lucide_path ]; then \
+		cat .lucide_path; \
+	else \
+		cargo build 2>&1 | grep "LUCIDE ICON PATH" | sed 's/.*LUCIDE ICON PATH: "//' | sed 's/"$$//' | tee .lucide_path; \
+	fi \
+)
 ZED_DIR := .zed
 ZED_SETTINGS := $(ZED_DIR)/settings.json
 .PHONY: setup
