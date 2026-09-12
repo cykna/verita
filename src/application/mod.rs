@@ -21,6 +21,7 @@ use crate::{
     application::{app::notifications::notify, services::ApplicationService},
     connection::{ApplicationConnection, ResponseFromConnection},
     domain::{
+        invites::DirectInviteRaw,
         kademlia::KademliaRepository,
         subscription::{Subscription, SubscriptionRepository},
     },
