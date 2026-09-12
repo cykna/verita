@@ -11,7 +11,7 @@ export component App inherits Window {
     background: Theme.background;
 
     callback send-message(MessageData);
-    callback request-invite(int);
+    callback request-invite(int, string);
     property <bool> should-open-dialog;
 
     in-out property <[MessageData]> messages: [
@@ -40,7 +40,7 @@ export component App inherits Window {
             should-open-dialog=false;
         }
         on-finish(invite) => {
-            request-invite(invite.duration);
+            request-invite(invite.duration, invite.password);
             should-open-dialog=false;
         }
     }
