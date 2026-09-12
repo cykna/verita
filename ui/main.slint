@@ -1,16 +1,19 @@
 import { Theme } from "theme.slint";
 import { Button } from "std-widgets.slint";
 import { VeritaButton } from "components/Button.slint";
-import { Chat, MessageList, MessageData, MessageOwner } from "components/Message.slint";
-import {Invite} from "domain/invite.slint";
+import {
+    Chat,
+    MessageList,
+    MessageData,
+    MessageOwner,
+} from "components/Message.slint";
+import { Invite } from "domain/invite.slint";
 import { Header } from "components/Header.slint";
 import { InviteRequester } from "components/invites/InviteRequester.slint";
 import { InviteFinder } from "components/invites/InviteFinder.slint";
+import { Notification } from "components/Notification.slint";
 
-export struct FoundInvite {
-    invite: Invite,
-    error: string
-}
+export struct FoundInvite { invite: Invite, error: string }
 
 export component App inherits Window {
     title: "My app";
@@ -18,34 +21,38 @@ export component App inherits Window {
 
     callback send-message(MessageData);
     callback request-invite(int, string);
-    callback find-invite(string, string)->FoundInvite;
+    callback find-invite(string, string) -> FoundInvite;
 
     in-out property <[MessageData]> messages: [
-        {content: "Suamae", owner:MessageOwner.User},
-        {content: "baleia", owner:MessageOwner.Them}
+        { content: "Suamae", owner:MessageOwner.User },
+        { content: "baleia", owner:MessageOwner.Them }
     ];
 
     Rectangle {
         width: 100%;
         height: 100%;
+
         VerticalLayout {
+
             Header {
                 padding: 4px;
                 request-invite => {
-                    requester.visible=true;
-                    invite-finder.visible=false;
+                    requester.visible = true;
+                    invite-finder.visible = false;
                 };
                 request-friend => {
-                    invite-finder.visible=true;
-                    requester.visible=false;
+                    invite-finder.visible = true;
+                    requester.visible = false;
                 }
             }
+
             Chat {
                 messages: messages;
-                onSendMsg(content) => send-message({content:content, owner: MessageOwner.User});
+                onSendMsg(content) => send-message({ content:content, owner: MessageOwner.User });
             }
         }
-        requester:=InviteRequester {
+
+        requester := InviteRequester {
             width: 50%;
             height: 50%;
             on-close-request => {
@@ -53,10 +60,11 @@ export component App inherits Window {
             }
             on-finish(invite) => {
                 request-invite(invite.duration, invite.password);
-                self.visible=false;
+                self.visible = false;
             }
         }
-        invite-finder:=InviteFinder {
+
+        invite-finder := InviteFinder {
             height: 50%;
             width: 50%;
             on-close-request => {
@@ -64,8 +72,24 @@ export component App inherits Window {
             }
             on-finish(invitesearch) => {
                 let x = find-invite(invitesearch.invite, invitesearch.password);
-                self.error=x.error;
+                self.error = x.error;
                 self.invite = x.invite;
+            }
+        }
+
+        property <bool> notfy:true;
+        if notfy: Notification {
+            bell-color: Theme.foreground;
+            bell-stroke: Theme.primary;
+            x: (parent.width + parent.x) - self.width;
+            y: self.height / 2;
+            Text {
+                text: "Corno";
+                color: Theme.foreground;
+            }
+
+            on-finish => {
+                notfy = false;
             }
         }
     }
