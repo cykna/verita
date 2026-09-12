@@ -1,0 +1,54 @@
+import { IconDisplay, IconSet } from "@lucide";
+import { HorizontalBox } from "std-widgets.slint";
+import { Theme } from "../theme.slint";
+export component Notification inherits Rectangle {
+    callback on-finish;
+    //duration in seconds
+    in property <float> lifetime: 1;
+    in property <brush> progress-bar-color: Theme.accent;
+    in property <length> progress-bar-width:3px;
+    in property <brush> bell-stroke;
+    in property <brush> bell-color;
+
+    width: layout.min-width;
+    height: layout.min-height;
+
+    rect := Rectangle {
+
+        layout := HorizontalLayout {
+            spacing: 12px;
+            padding: 12px;
+            IconDisplay {
+                icon: IconSet.Bell;
+                stroke: bell-stroke;
+                stroke-fill: bell-color;
+            }
+            Rectangle {
+                @children
+            }
+        }
+
+        border-color: Theme.foreground;
+        border-radius: 0px;
+        border-width: 1px;
+    }
+
+    Rectangle {
+        property <float> progress: 1.0;
+        background: progress-bar-color;
+        width: rect.width * progress;
+        height: progress-bar-width;
+        x: rect.x + (rect.width - self.width) / 2;
+        y: rect.y - (self.height / (progress-bar-width / 1px));
+        Timer {
+            interval: 16ms;
+            running: progress > 0.0;
+            triggered => {
+                progress -= 0.016 / lifetime;
+                if progress <= 0 {
+                    on-finish();
+                }
+            }
+        }
+    }
+}
