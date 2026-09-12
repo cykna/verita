@@ -1,7 +1,6 @@
 use crate::application::Application;
 
 mod application;
-mod bidirectional_channel;
 mod connection;
 mod domain;
 mod infra;

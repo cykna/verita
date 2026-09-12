@@ -5,7 +5,7 @@ edition = "2024"
 build = "build.rs"
 
 [workspace]
-members = [".",  "database", "migration"]
+members = [".", "common",  "database", "migration"]
 
 [workspace.dependencies]
 libp2p = {version="0.56.0", features = ["tokio","gossipsub", "mdns", "noise", "macros", "tcp", "yamux", "quic", "kad"]}
@@ -19,6 +19,7 @@ chrono = "0.4.45"
 [dependencies]
 database.path="database"
 migration.path="migration"
+common.path="common"
 
 color-eyre.workspace=true
 flume.workspace=true
@@ -31,6 +32,18 @@ libp2p.workspace=true
 slint = "1.17.1"
 tracing-subscriber = "0.3.23"
 async-trait = "0.1.92"
+bytes = "1.12.1"
+argon2 = "0.6.0"
+password-hash = "0.6.1"
+rand = "0.10.2"
+hmac = "0.13.0"
+sha2 = "0.11.0"
+serde = "1.0.229"
+postcard = {version = "1.1.3", features=["alloc"]}
+chacha20poly1305 = { version = "0.11.0", features = ["bytes", "zeroize"] }
+arboard = {version = "3.6.1", features=["wayland-data-control"]}
+bs58 = "0.5.1"
 
 [build-dependencies]
+lucide-slint = "1.44.0"
 slint-build = "1.16.0"

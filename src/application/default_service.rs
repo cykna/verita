@@ -1,8 +1,8 @@
+use common::Sender;
 use sea_orm::DatabaseConnection;
 
 use crate::{
     application::{ConnectionRequester, services::ApplicationService},
-    bidirectional_channel::Channel,
     connection::RequestToConnection,
     infra::{kademlia::SeaOrmKademliaRepo, sea::SeaOrmSubscriptionRepo},
 };
@@ -26,7 +26,7 @@ impl ApplicationService for AppServices {
     fn kademlia_repo(&self) -> &Self::Kademlia {
         &self.kademlia_repo
     }
-    fn new(database: DatabaseConnection, channel: Channel<RequestToConnection>) -> Self {
+    fn new(database: DatabaseConnection, channel: Sender<RequestToConnection>) -> Self {
         Self {
             subscription_repo: SeaOrmSubscriptionRepo::new(database.clone()),
             kademlia_repo: SeaOrmKademliaRepo::new(database),

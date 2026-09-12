@@ -1,0 +1,82 @@
+import { VerticalBox, LineEdit, HorizontalBox } from "std-widgets.slint";
+import { IconDisplay, IconSet } from "@lucide";
+import { VeritaButton } from "../Button.slint";
+import { Theme } from "../../theme.slint";
+import { HorizontalLine } from "../Line.slint";
+import { VeritaDialog } from "../Dialog.slint";
+
+export struct InviteInformation {
+    duration: int,
+    password: string
+}
+
+export component InviteRequesterOption inherits VerticalBox {
+    in property <string> title;
+    in property <string> placeholder;
+    in property <InputType> type;
+    out property <string> content <=> line.text;
+    spacing: 8px;
+    alignment: LayoutAlignment.start;
+    Text {
+        preferred-width: self.min-width;
+        preferred-height: self.min-height;
+        text:title;
+        color: Theme.accent;
+    }
+    Rectangle {
+        preferred-height: line.preferred-height;
+        background: Theme.accent;
+        border-radius: 12px;
+        line:=LineEdit {
+            preferred-width: 100%;
+            preferred-height: self.min-height;
+            placeholder-text: placeholder;
+            input-type: type;
+        }
+    }
+}
+
+export component InviteRequester inherits VeritaDialog{
+    title: "Invite Requester";
+    out property <int> invite-duration: duration_input.content.to-float();
+    out property <string> password: password_input.content;
+    callback on-finish(InviteInformation);
+
+    VerticalBox {
+        VerticalBox {
+            duration_input:=InviteRequesterOption {
+                title: "The duration of the invite";
+                placeholder: "The duration in seconds";
+                type: InputType.number;
+                HorizontalLine {
+                    background: Theme.accent;
+                }
+            }
+        }
+        VerticalBox {
+            password_input := InviteRequesterOption {
+                title: "The password of the invite";
+                placeholder: "Type a strong password";
+                type: InputType.password;
+            }
+        }
+
+        VeritaButton {
+            height: box.preferred-height;
+            box:=HorizontalBox {
+                Text {
+                    text: "Finish the invite";
+                }
+                IconDisplay {
+                    icon: IconSet.Check;
+                }
+            }
+            clicked => {
+                on-finish({
+                    duration:invite-duration,
+                    password: password
+                });
+            }
+        }
+    }
+}

@@ -1,0 +1,32 @@
+import { VeritaButton } from "Button.slint";
+import { UserInformation } from "UserInformation.slint";
+import { Theme } from "../theme.slint";
+import { IconDisplay, IconSet } from "@lucide";
+export component Header inherits Rectangle{
+    height: self.min-height;
+    background: Theme.accent;
+    callback request-invite;
+    callback request-friend;
+    HorizontalLayout {
+        padding: parent.padding;
+        alignment: space-between;
+        VeritaButton{
+            IconDisplay {
+                icon: IconSet.Send;
+            }
+            padding: 12px;
+            clicked => {
+                request-invite();
+            }
+        }
+        VeritaButton {
+            IconDisplay {
+                icon: IconSet.Contact;
+            }
+            padding: 12px;
+            clicked => {
+                request-friend();
+            }
+        }
+    }
+}
