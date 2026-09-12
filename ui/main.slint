@@ -7,13 +7,18 @@ import { Header } from "components/Header.slint";
 import { InviteRequester } from "components/invites/InviteRequester.slint";
 import { InviteFinder } from "components/invites/InviteFinder.slint";
 
+export struct FoundInvite {
+    invite: Invite,
+    error: string
+}
+
 export component App inherits Window {
     title: "My app";
     background: Theme.background;
 
     callback send-message(MessageData);
     callback request-invite(int, string);
-    callback find-invite(string, string);
+    callback find-invite(string, string)->FoundInvite;
 
     in-out property <[MessageData]> messages: [
         {content: "Suamae", owner:MessageOwner.User},
@@ -58,7 +63,9 @@ export component App inherits Window {
                 self.visible = false;
             }
             on-finish(invitesearch) => {
-                find-invite(invitesearch.invite, invitesearch.password);
+                let x = find-invite(invitesearch.invite, invitesearch.password);
+                self.error=x.error;
+                self.invite = x.invite;
             }
         }
     }

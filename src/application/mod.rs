@@ -1,3 +1,4 @@
+mod app;
 mod commands;
 mod default_service;
 mod services;
@@ -20,6 +21,7 @@ use crate::{
     application::services::ApplicationService,
     connection::{ApplicationConnection, RequestToConnection, ResponseFromConnection},
     domain::{
+        invites::DirectInviteRaw,
         kademlia::KademliaRepository,
         subscription::{Subscription, SubscriptionRepository},
     },
@@ -59,89 +61,6 @@ impl<S: ApplicationService> Application<S> {
         let database = Database::connect("sqlite://database/app.db?mode=rwc").await?;
         Migrator::up(&database, None).await?;
         Ok(database)
-    }
-
-    pub fn build_window(
-        res: Sender<RequestToConnection>,
-        clipboard: std::sync::Arc<std::sync::RwLock<Clipboard>>,
-    ) -> color_eyre::Result<App> {
-        let app = App::new()?;
-        app.on_send_message({
-            let app = app.as_weak();
-            let res = res.clone();
-            move |message| {
-                let app = app.clone();
-                let res = res.clone();
-                tokio::spawn(async move {
-                    let Ok(_) = res
-                        .request(RequestToConnection::SendMessage(
-                            message.content.to_string(),
-                        ))
-                        .await
-                    else {
-                        return;
-                    };
-                    slint::invoke_from_event_loop(move || {
-                        if let Some(app) = app.upgrade() {
-                            let messages = app.get_messages().iter().collect::<VecModel<_>>();
-                            messages.push(message);
-                            app.set_messages(ModelRc::new(messages));
-                        }
-                    })
-                    .unwrap();
-                });
-            }
-        });
-        app.on_request_invite({
-            move |duration, password| {
-                let res = res.clone();
-                let clipboard = clipboard.clone();
-                tokio::spawn(async move {
-                    let invite = match res
-                        .request(RequestToConnection::GenerateInvite(
-                            std::time::Duration::from_secs(duration as u64),
-                        ))
-                        .await
-                    {
-                        Ok(ResponseFromConnection::Invite(invite)) => invite,
-                        Ok(e) => return Err(error!("Invalid response {e:?}")),
-                        Err(e) => {
-                            return Err(error!("Internal error during request for invite: {e}"));
-                        }
-                    };
-                    let private_key = match res.request(RequestToConnection::GrantPrivateKey).await
-                    {
-                        Ok(ResponseFromConnection::PrivateKey(key)) => key,
-                        Ok(e) => return Err(error!("Invalid response {e:?}")),
-                        Err(e) => {
-                            return Err(error!("Internal error during request for invite: {e}"));
-                        }
-                    };
-
-                    let raw_invite = {
-                        let temp = invite
-                            .as_raw(&private_key, password.as_bytes())
-                            .expect("Couldn't generate raw invite");
-                        postcard::to_allocvec(&temp).unwrap()
-                    };
-                    let bs58_invite = bs58::encode(raw_invite).into_string();
-
-                    {
-                        let mut lock = clipboard.write().unwrap();
-                        info!("Writing into clipboard");
-                        lock.set_text(bs58_invite)
-                            .expect("Should be able to store the invite on clipboard");
-                        info!(
-                            "Successfully wrote on clipboard {}",
-                            lock.get_text().unwrap()
-                        );
-                    }
-
-                    Ok(())
-                });
-            }
-        });
-        Ok(app)
     }
 
     async fn handle_request(&mut self, req: RequestToUi) -> ResponseFromUi {

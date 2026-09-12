@@ -76,6 +76,30 @@ impl DirectInviteMetadata {
     }
 }
 
+impl DirectInviteRaw {
+    pub fn as_direct(self, password: &[u8]) -> color_eyre::Result<DirectInvite> {
+        let crypto_key = {
+            let mut key = [0; 32];
+            let argon = Argon2::new(
+                argon2::Algorithm::Argon2id,
+                argon2::Version::V0x13,
+                Params::default(),
+            );
+            argon.hash_password_into(password, &self.salt, &mut key)?;
+            key
+        };
+        let decrypt_metadata = XChaCha20Poly1305::new_from_slice(&crypto_key)?
+            .decrypt(&XNonce::try_from(self.nonce)?, self.metadata.as_ref())?;
+        let metadata = postcard::from_bytes(&decrypt_metadata)?;
+        Ok(DirectInvite {
+            metadata,
+            salt: self.salt,
+            nonce: self.nonce,
+            signature: self.signature,
+        })
+    }
+}
+
 impl DirectInvite {
     ///Retrieves cryptographic safe contents for using on a direct invite. Returns the salt and the nonce to sign the invite metadata.
     pub fn invite_crypto(private_key: &[u8; 32]) -> ([u8; 32], [u8; 24], Hmac<Sha256>) {

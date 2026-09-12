@@ -1,4 +1,5 @@
 import { VeritaDialog } from "../Dialog.slint";
+import {Invite} from "../../domain/invite.slint";
 import { VerticalBox, HorizontalBox } from "std-widgets.slint";
 import { InviteRequesterOption } from "InviteRequester.slint";
 import { VeritaButton } from "../Button.slint";
@@ -13,6 +14,8 @@ export struct InviteSearch {
 export component InviteFinder inherits VeritaDialog {
     callback on-finish(InviteSearch);
     title: "Invite Finder";
+    in-out property <string> error;
+    in-out property <Invite> invite;
     VerticalBox {
         VerticalBox {
             invite-input:=InviteRequesterOption {
@@ -45,6 +48,9 @@ export component InviteFinder inherits VeritaDialog {
             clicked => {
                 on-finish({invite: invite-input.content, password: password-input.content})
             }
+        }
+        if error == "": Text {
+            text: invite.address;
         }
     }
 }
