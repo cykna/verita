@@ -10,6 +10,24 @@ use crate::{
     connection::{RequestToConnection, ResponseFromConnection},
     domain::invites::DirectInviteRaw,
 };
+
+pub(crate) fn error_invite() -> crate::Invite {
+    let empty = "".to_shared_string();
+    crate::Invite {
+        address: empty.clone(),
+        peer: empty.clone(),
+        valid: false,
+        timestamp: 0,
+    }
+}
+
+pub fn found_invite(invite: Invite, error: Option<color_eyre::Report>) -> crate::FoundInvite {
+    crate::FoundInvite {
+        invite,
+        error: error.map(|e| e.to_shared_string()).unwrap_or_default(),
+    }
+}
+
 pub(crate) fn setup_request_invite(
     app: &App,
     res: Sender<RequestToConnection>,
@@ -63,23 +81,6 @@ pub(crate) fn setup_request_invite(
             });
         }
     });
-}
-
-pub(crate) fn error_invite() -> crate::Invite {
-    let empty = "".to_shared_string();
-    crate::Invite {
-        address: empty.clone(),
-        peer: empty.clone(),
-        valid: false,
-        timestamp: 0,
-    }
-}
-
-pub fn found_invite(invite: Invite, error: Option<color_eyre::Report>) -> crate::FoundInvite {
-    crate::FoundInvite {
-        invite,
-        error: error.map(|e| e.to_shared_string()).unwrap_or_default(),
-    }
 }
 
 pub(crate) fn setup_find_invite(app: &App, res: Sender<RequestToConnection>) {
