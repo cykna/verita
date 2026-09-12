@@ -1,0 +1,45 @@
+import { Theme } from "../theme.slint";
+import { HorizontalBox, VerticalBox } from "std-widgets.slint";
+import { VeritaButton } from "Button.slint";
+import { IconDisplay, IconSet } from "@lucide";
+import { HorizontalLine } from "Line.slint";
+export component VeritaDialog inherits Dialog{
+    callback on-close-request;
+    background: transparent;
+    visible: false;
+    Rectangle {
+        border-radius: 12px;
+        drop-shadow-blur: 12px;
+        drop-shadow-color: Theme.accent;
+        background: Theme.background;
+        VerticalLayout {
+            padding: 8px;
+            spacing: 4px;
+            HorizontalLayout {
+                Text {
+                    text: root.title;
+                    font-size: 18px;
+                    font-weight: 800;
+                    color: Theme.accent;
+                }
+
+                VeritaButton {
+                    icon := IconDisplay {
+                        icon: IconSet.X;
+                    }
+
+                    clicked => {
+                        on-close-request();
+                    }
+                }
+            }
+
+            HorizontalLine {
+                background: Theme.accent;
+            }
+
+            @children
+        }
+    }
+
+}
