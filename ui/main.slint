@@ -2,22 +2,46 @@ import { Theme } from "theme.slint";
 import { Button } from "std-widgets.slint";
 import { VeritaButton } from "components/Button.slint";
 import { Chat, MessageList, MessageData, MessageOwner } from "components/Message.slint";
+import {Invite} from "domain/invite.slint";
+import { Header } from "components/Header.slint";
+import { InviteRequester } from "components/InviteRequester.slint";
 
 export component App inherits Window {
     title: "My app";
     background: Theme.background;
+
     callback send-message(MessageData);
+    callback request-invite(int);
+    property <bool> should-open-dialog;
 
     in-out property <[MessageData]> messages: [
         {content: "Suamae", owner:MessageOwner.User},
         {content: "baleia", owner:MessageOwner.Them}
     ];
+
+
     VerticalLayout {
-        padding: 12px;
+        Header {
+            padding: 4px;
+            request-invite(n) => {
+                should-open-dialog = true;
+            };
+        }
         Chat {
             messages: messages;
             onSendMsg(content) => send-message({content:content, owner: MessageOwner.User});
         }
     }
-
+    InviteRequester {
+        width: parent.width / 2;
+        height: parent.height / 2;
+        visible: should-open-dialog;
+        on-close-request => {
+            should-open-dialog=false;
+        }
+        on-finish(invite) => {
+            request-invite(invite.duration);
+            should-open-dialog=false;
+        }
+    }
 }

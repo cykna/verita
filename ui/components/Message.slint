@@ -1,6 +1,7 @@
 import { HorizontalBox, TextEdit, VerticalBox, LineEdit } from "std-widgets.slint";
 import { Theme } from "../theme.slint";
 import { VeritaButton } from "Button.slint";
+import { IconDisplay, IconSet } from "@lucide";
 export enum MessageOwner {
     User, Them
 }
@@ -60,7 +61,9 @@ export component Chat inherits Rectangle {
 
                 }
                 VeritaButton {
-                    text: "Send";
+                    IconDisplay {
+                        icon: IconSet.Send;
+                    }
                     background: transparent;
                     drop-shadow-color: transparent;
                     clicked => {
