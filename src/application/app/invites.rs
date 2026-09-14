@@ -2,7 +2,7 @@ use arboard::Clipboard;
 
 use common::Sender;
 
-use slint::ToSharedString;
+use slint::{ComponentHandle, ToSharedString};
 use tracing::{error, info};
 
 use crate::{
@@ -13,7 +13,7 @@ use crate::{
 
 pub(crate) fn error_invite() -> crate::Invite {
     let empty = "".to_shared_string();
-    crate::Invite {
+    crate::slint_generatedApp::Invite {
         address: empty.clone(),
         peer: empty.clone(),
         valid: false,
@@ -21,7 +21,10 @@ pub(crate) fn error_invite() -> crate::Invite {
     }
 }
 
-pub fn found_invite(invite: Invite, error: Option<color_eyre::Report>) -> crate::FoundInvite {
+pub fn found_invite(
+    invite: crate::Invite,
+    error: Option<color_eyre::Report>,
+) -> crate::FoundInvite {
     crate::FoundInvite {
         invite,
         error: error.map(|e| e.to_shared_string()).unwrap_or_default(),
@@ -33,7 +36,7 @@ pub(crate) fn setup_request_invite(
     res: Sender<RequestToConnection>,
     clipboard: std::sync::Arc<std::sync::RwLock<Clipboard>>,
 ) {
-    app.on_request_invite({
+    app.global::<crate::Callbacks>().on_request_invite({
         move |duration, password| {
             let res = res.clone();
             let clipboard = clipboard.clone();
@@ -84,7 +87,7 @@ pub(crate) fn setup_request_invite(
 }
 
 pub(crate) fn setup_find_invite(app: &App, res: Sender<RequestToConnection>) {
-    app.on_find_invite({
+    app.global::<crate::Callbacks>().on_find_invite({
         move |invite, password| {
             let raw_invite = match bs58::decode(invite.as_str()).into_vec() {
                 Ok(raw) => raw,

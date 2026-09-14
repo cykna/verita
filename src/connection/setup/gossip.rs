@@ -1,18 +1,15 @@
-use core::fmt::NumBuffer;
-use std::{
-    hash::{DefaultHasher, Hash, Hasher},
-    time::Duration,
-};
+use std::time::Duration;
 
 use libp2p::{PeerId, gossipsub, identity::Keypair};
+use sha2::Digest;
 
 ///Function that creates an id for some given `msg` from the given `peer`
 pub fn message_id_generator(msg: &gossipsub::Message, peer: PeerId) -> gossipsub::MessageId {
-    let mut content = NumBuffer::new();
-    let mut s = DefaultHasher::new();
-    msg.data.hash(&mut s);
-    peer.hash(&mut s);
-    gossipsub::MessageId::from(s.finish().format_into(&mut content))
+    let mut sha = sha2::Sha256::new();
+    sha.update(&msg.data);
+    let id = sha.finalize().to_vec();
+
+    gossipsub::MessageId::from(id)
 }
 
 pub fn behavior(key: &Keypair, id: PeerId) -> color_eyre::Result<gossipsub::Behaviour> {

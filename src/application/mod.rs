@@ -71,10 +71,11 @@ impl<S: ApplicationService> Application<S> {
                     move || {
                         if let Some(app) = app.upgrade() {
                             let text = String::from_utf8_lossy(&message.data);
-                            app.invoke_send_message(MessageData {
-                                content: text.to_shared_string(),
-                                owner: MessageOwner::Them,
-                            });
+                            app.global::<crate::Callbacks>()
+                                .invoke_send_message(MessageData {
+                                    content: text.to_shared_string(),
+                                    owner: MessageOwner::Them,
+                                });
                             notify(
                                 &app,
                                 "New message",
@@ -98,7 +99,7 @@ impl<S: ApplicationService> Application<S> {
             }
             RequestToUi::Notify(notfication) => {
                 if let Some(app) = self.app.upgrade() {
-                    app.invoke_notify(notfication);
+                    app.global::<crate::Callbacks>().invoke_notify(notfication);
                 }
                 ResponseFromUi::Empty
             }

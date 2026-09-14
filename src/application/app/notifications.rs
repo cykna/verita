@@ -5,7 +5,7 @@ use std::{
 
 use slint::{ComponentHandle, Model, ModelRc, SharedString, VecModel};
 
-use crate::{App, NotificationData};
+use crate::{App, NotificationData, application::app::notifications};
 
 static NOTIFICATION_KEY: AtomicI32 = AtomicI32::new(0);
 ///Emits a new notification from outside the UI event loop. New notifications
@@ -30,22 +30,21 @@ pub fn notify(
 ///Emits a notification already built by the caller.
 pub fn notify_data(app: &App, notification: NotificationData) {
     if let Some(app) = app.as_weak().upgrade() {
-        app.invoke_notify(notification);
+        app.global::<crate::Callbacks>().invoke_notify(notification);
     }
 }
 
 pub(crate) fn setup_notifications(app: &App) {
     let notifications = Rc::new(VecModel::<NotificationData>::default());
     app.set_notifications(ModelRc::new(notifications.clone()));
-
-    app.on_notify({
+    app.global::<crate::Callbacks>().on_notify({
         let notifications = notifications.clone();
         move |notification| {
             notifications.push(notification);
         }
     });
 
-    app.on_notify_end({
+    app.global::<crate::Callbacks>().on_notify_end({
         let notifications = notifications.clone();
         move |key| {
             for index in (0..notifications.row_count()).rev() {

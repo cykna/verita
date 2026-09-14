@@ -4,7 +4,7 @@ use slint::{ComponentHandle, Model, ModelExt, ModelRc, VecModel};
 use crate::{App, connection::RequestToConnection};
 
 pub(crate) fn setup_send_message(app: &App, res: Sender<RequestToConnection>) {
-    app.on_send_message({
+    app.global::<crate::Callbacks>().on_send_message({
         let app = app.as_weak();
         move |message| {
             let app = app.clone();
