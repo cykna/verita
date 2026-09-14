@@ -14,15 +14,25 @@ import { InviteFinder } from "components/invites/InviteFinder.slint";
 import { Notification } from "components/Notification.slint";
 
 export struct FoundInvite { invite: Invite, error: string }
+export struct NotificationData {
+    key: int,
+    title: string,
+    text: string,
+    duration: duration,
+}
 
 export component App inherits Window {
     title: "My app";
     background: Theme.background;
 
+    //callback used to emit a new
+    callback notify(NotificationData);
+    callback notify-end(int);
     callback send-message(MessageData);
     callback request-invite(int, string);
     callback find-invite(string, string) -> FoundInvite;
 
+    in-out property <[NotificationData]> notifications: [];
     in-out property <[MessageData]> messages: [
         { content: "Suamae", owner:MessageOwner.User },
         { content: "baleia", owner:MessageOwner.Them }
@@ -77,19 +87,26 @@ export component App inherits Window {
             }
         }
 
-        property <bool> notfy:true;
-        if notfy: Notification {
-            bell-color: Theme.foreground;
-            bell-stroke: Theme.primary;
-            x: (parent.width + parent.x) - self.width;
-            y: self.height / 2;
-            Text {
-                text: "Corno";
-                color: Theme.foreground;
-            }
+        VerticalLayout {
+            x: parent.x + (parent.width / 10);
+            y: parent.height / 10;
+            for notification in notifications: Notification {
+                lifetime: notification.duration / 1s;
+                on-finish => {
+                    notify-end(notification.key);
+                }
+                Text {
+                    text: notification.title;
+                    color: Theme.foreground;
+                    font-size: 18px;
+                    font-weight: 700;
+                }
+                Text {
+                    text: notification.text;
+                    color: Theme.foreground;
+                    font-size: 12px;
+                }
 
-            on-finish => {
-                notfy = false;
             }
         }
     }

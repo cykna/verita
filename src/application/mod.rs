@@ -18,7 +18,7 @@ use slint::{ComponentHandle, Model, ModelRc, ToSharedString, VecModel, Weak};
 
 use crate::{
     App, MessageData, MessageOwner,
-    application::services::ApplicationService,
+    application::{app::notifications::notify, services::ApplicationService},
     connection::{ApplicationConnection, RequestToConnection, ResponseFromConnection},
     domain::{
         invites::DirectInviteRaw,
@@ -70,11 +70,17 @@ impl<S: ApplicationService> Application<S> {
                     let app = self.app.clone();
                     move || {
                         if let Some(app) = app.upgrade() {
+                            let text = String::from_utf8_lossy(&message.data);
                             app.invoke_send_message(MessageData {
-                                content: String::from_utf8_lossy(&message.data).to_shared_string(),
+                                content: text.to_shared_string(),
                                 owner: MessageOwner::Them,
                             });
-                        } else {
+                            notify(
+                                &app,
+                                "New message",
+                                text.to_string(),
+                                std::time::Duration::from_secs(3),
+                            );
                         }
                     }
                 })
@@ -89,6 +95,12 @@ impl<S: ApplicationService> Application<S> {
                     .await
                     .unwrap();
                 ResponseFromUi::KademliaAddresses(addresses)
+            }
+            RequestToUi::Notify(notfication) => {
+                if let Some(app) = self.app.upgrade() {
+                    app.invoke_notify(notfication);
+                }
+                ResponseFromUi::Empty
             }
         }
     }
