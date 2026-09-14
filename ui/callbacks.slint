@@ -1,0 +1,10 @@
+import {NotificationData, MessageData, FoundInvite} from "domain/main.slint";
+export global Callbacks {
+    callback notify(NotificationData);
+    ///Returns a notification data for the given `title` and `description` on the notification
+    callback retrieve-notification-for(string, string) -> NotificationData;
+    callback notify-end(int);
+    callback send-message(MessageData);
+    callback request-invite(int, string);
+    callback find-invite(string, string) -> FoundInvite;
+}

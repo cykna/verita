@@ -1,0 +1,13 @@
+export struct Invite {
+    address: string,
+    peer: string,
+    timestamp: int,
+    valid: bool
+}
+
+export struct FoundInvite { invite: Invite, error: string }
+
+export struct InviteSearch {
+    invite: string,
+    password: string,
+}

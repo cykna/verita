@@ -4,39 +4,24 @@ import { VeritaButton } from "components/Button.slint";
 import {
     Chat,
     MessageList,
-    MessageData,
-    MessageOwner,
 } from "components/Message.slint";
-import { Invite } from "domain/invite.slint";
+import { Invite } from "domain/Invite.slint";
+import { MessageData, MessageOwner } from "domain/Message.slint";
+import { NotificationData } from "domain/Notification.slint";
 import { Header } from "components/Header.slint";
 import { InviteRequester } from "components/invites/InviteRequester.slint";
 import { InviteFinder } from "components/invites/InviteFinder.slint";
 import { Notification } from "components/Notification.slint";
+import { Callbacks } from "./callbacks.slint";
 
-export struct FoundInvite { invite: Invite, error: string }
-export struct NotificationData {
-    key: int,
-    title: string,
-    text: string,
-    duration: duration,
-}
+export { Callbacks }
 
 export component App inherits Window {
     title: "My app";
     background: Theme.background;
 
-    //callback used to emit a new
-    callback notify(NotificationData);
-    callback notify-end(int);
-    callback send-message(MessageData);
-    callback request-invite(int, string);
-    callback find-invite(string, string) -> FoundInvite;
-
     in-out property <[NotificationData]> notifications: [];
-    in-out property <[MessageData]> messages: [
-        { content: "Suamae", owner:MessageOwner.User },
-        { content: "baleia", owner:MessageOwner.Them }
-    ];
+    in-out property <[MessageData]> messages: [];
 
     Rectangle {
         width: 100%;
@@ -58,7 +43,7 @@ export component App inherits Window {
 
             Chat {
                 messages: messages;
-                onSendMsg(content) => send-message({ content:content, owner: MessageOwner.User });
+                onSendMsg(content) => Callbacks.send-message({ content:content, owner: MessageOwner.User });
             }
         }
 
@@ -69,7 +54,7 @@ export component App inherits Window {
                 self.visible = false;
             }
             on-finish(invite) => {
-                request-invite(invite.duration, invite.password);
+                Callbacks.request-invite(invite.duration, invite.password);
                 self.visible = false;
             }
         }
@@ -81,9 +66,12 @@ export component App inherits Window {
                 self.visible = false;
             }
             on-finish(invitesearch) => {
-                let x = find-invite(invitesearch.invite, invitesearch.password);
-                self.error = x.error;
-                self.invite = x.invite;
+                let x = Callbacks.find-invite(invitesearch.invite, invitesearch.password);
+                if x.error != "" {
+                    Callbacks.notify(Callbacks.retrieve-notification-for("Error while trying to find invite", x.error));
+                } else {
+                    Callbacks.notify(Callbacks.retrieve-notification-for("Successfuly found user", "Found user with address: \{x.invite.address} and peer \{x.invite.peer}"))
+                }
             }
         }
 
@@ -93,7 +81,7 @@ export component App inherits Window {
             for notification in notifications: Notification {
                 lifetime: notification.duration / 1s;
                 on-finish => {
-                    notify-end(notification.key);
+                    Callbacks.notify-end(notification.key);
                 }
                 Text {
                     text: notification.title;
@@ -101,12 +89,12 @@ export component App inherits Window {
                     font-size: 18px;
                     font-weight: 700;
                 }
+
                 Text {
                     text: notification.text;
                     color: Theme.foreground;
                     font-size: 12px;
                 }
-
             }
         }
     }
