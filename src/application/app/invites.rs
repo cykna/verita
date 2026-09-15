@@ -67,6 +67,7 @@ pub(crate) fn setup_request_invite(
         move |duration, password| {
             let res = res.clone();
             let clipboard = clipboard.clone();
+            let app = app.clone();
             let _ = exec_notifying_async(app.clone(), async move {
                 let invite = match res
                     .request(RequestToConnection::GenerateInvite(
@@ -113,7 +114,6 @@ pub(crate) fn setup_request_invite(
 
 pub(crate) fn setup_find_invite(app: &App, res: Sender<RequestToConnection>) {
     app.global::<crate::Callbacks>().on_find_invite({
-        let app = app.as_weak();
         move |invite, password| {
             let raw_invite = match bs58::decode(invite.as_str()).into_vec() {
                 Ok(raw) => raw,

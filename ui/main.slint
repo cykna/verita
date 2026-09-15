@@ -11,7 +11,7 @@ import { NotificationData } from "domain/Notification.slint";
 import { Header } from "components/Header.slint";
 import { InviteRequester } from "components/invites/InviteRequester.slint";
 import { InviteFinder } from "components/invites/InviteFinder.slint";
-import { Notification } from "components/Notification.slint";
+import { Notification, TextNotification } from "components/Notification.slint";
 import { Callbacks } from "./callbacks.slint";
 
 export { Callbacks }
@@ -68,9 +68,9 @@ export component App inherits Window {
             on-finish(invitesearch) => {
                 let x = Callbacks.find-invite(invitesearch.invite, invitesearch.password);
                 if x.error != "" {
-                    Callbacks.notify(Callbacks.retrieve-notification-for("Error while trying to find invite", x.error));
+                    Callbacks.notify(Callbacks.retrieve-notification-for("Error while trying to find invite", x.error, 2s));
                 } else {
-                    Callbacks.notify(Callbacks.retrieve-notification-for("Successfuly found user", "Found user with address: \{x.invite.address} and peer \{x.invite.peer}"))
+                    Callbacks.notify(Callbacks.retrieve-notification-for("Successfuly found user", "Found user with address: \{x.invite.address} and peer \{x.invite.peer}", 2s))
                 }
             }
         }
@@ -78,23 +78,11 @@ export component App inherits Window {
         VerticalLayout {
             x: parent.x + (parent.width / 10);
             y: parent.height / 10;
-            for notification in notifications: Notification {
+            for notification in notifications: TextNotification {
+                key: notification.key;
+                title: notification.title;
+                description: notification.text;
                 lifetime: notification.duration / 1s;
-                on-finish => {
-                    Callbacks.notify-end(notification.key);
-                }
-                Text {
-                    text: notification.title;
-                    color: Theme.foreground;
-                    font-size: 18px;
-                    font-weight: 700;
-                }
-
-                Text {
-                    text: notification.text;
-                    color: Theme.foreground;
-                    font-size: 12px;
-                }
             }
         }
     }
