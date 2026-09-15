@@ -8,6 +8,37 @@ use slint::{ComponentHandle, Model, ModelRc, SharedString, VecModel};
 use crate::{App, NotificationData, application::app::notifications};
 
 static NOTIFICATION_KEY: AtomicI32 = AtomicI32::new(0);
+
+impl NotificationData {
+    pub fn default_duration() -> std::time::Duration {
+        std::time::Duration::from_millis(3000)
+    }
+
+    pub fn new(
+        title: impl Into<SharedString>,
+        text: impl Into<SharedString>,
+        duration: std::time::Duration,
+    ) -> Self {
+        Self {
+            duration: duration.as_millis() as i64,
+            key: NOTIFICATION_KEY.fetch_add(1, Ordering::Relaxed),
+            title: title.into(),
+            text: text.into(),
+        }
+    }
+    pub fn new_with_default_duration(
+        title: impl Into<SharedString>,
+        text: impl Into<SharedString>,
+    ) -> Self {
+        Self {
+            duration: Self::default_duration().as_millis() as i64,
+            key: NOTIFICATION_KEY.fetch_add(1, Ordering::Relaxed),
+            title: title.into(),
+            text: text.into(),
+        }
+    }
+}
+
 ///Emits a new notification from outside the UI event loop. New notifications
 ///are stacked below the already visible ones and auto-expire after `duration`.
 pub fn notify(
@@ -16,15 +47,7 @@ pub fn notify(
     text: impl Into<SharedString>,
     duration: std::time::Duration,
 ) {
-    notify_data(
-        app,
-        NotificationData {
-            key: NOTIFICATION_KEY.fetch_add(1, Ordering::Relaxed),
-            title: title.into(),
-            text: text.into(),
-            duration: duration.as_millis() as i64,
-        },
-    );
+    notify_data(app, NotificationData::new(title, text, duration));
 }
 
 ///Emits a notification already built by the caller.
@@ -58,4 +81,13 @@ pub(crate) fn setup_notifications(app: &App) {
             }
         }
     });
+
+    app.global::<crate::Callbacks>()
+        .on_retrieve_notification_for(|title, text, duration| {
+            NotificationData::new(
+                title,
+                text,
+                std::time::Duration::from_millis(duration as u64),
+            )
+        });
 }

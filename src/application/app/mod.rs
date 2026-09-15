@@ -6,7 +6,7 @@ use common::Sender;
 use slint::{ComponentHandle, Model, ModelRc, VecModel};
 
 use crate::{
-    App,
+    App, NotificationData,
     application::{Application, services::ApplicationService},
     connection::RequestToConnection,
 };
