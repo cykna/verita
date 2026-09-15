@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use libp2p::{PeerId, kad::RecordKey};
+use libp2p::PeerId;
 use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, QuerySelect, QueryTrait};
 
 use crate::{

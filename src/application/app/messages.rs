@@ -1,5 +1,5 @@
 use common::Sender;
-use slint::{ComponentHandle, Model, ModelExt, ModelRc, VecModel};
+use slint::{ComponentHandle, Model, ModelRc, VecModel};
 
 use crate::{App, connection::RequestToConnection};
 

@@ -2,15 +2,11 @@ mod commands;
 mod setup;
 pub use commands::*;
 use common::Sender;
-use core::fmt::NumBuffer;
-use std::{
-    hash::{DefaultHasher, Hash, Hasher},
-    ops::{Deref, DerefMut},
-    time::Duration,
-};
+
+use std::ops::{Deref, DerefMut};
 
 use libp2p::{
-    Multiaddr, PeerId, Swarm, SwarmBuilder,
+    Multiaddr, PeerId, Swarm,
     gossipsub::{self, IdentTopic},
     kad::{self, store::MemoryStore},
     mdns,

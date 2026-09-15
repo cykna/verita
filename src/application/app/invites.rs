@@ -7,7 +7,7 @@ use slint::{ComponentHandle, ToSharedString, Weak};
 use tracing::{error, info};
 
 use crate::{
-    App, Invite, NotificationData,
+    App, NotificationData,
     application::app::notifications::notify_data,
     connection::{RequestToConnection, ResponseFromConnection},
     domain::invites::DirectInviteRaw,
@@ -90,7 +90,7 @@ pub(crate) fn setup_request_invite(
                 };
 
                 let raw_invite = {
-                    let temp = invite.as_raw(&private_key, password.as_bytes())?;
+                    let temp = invite.retrieve_raw(&private_key, password.as_bytes())?;
                     postcard::to_allocvec(&temp)?
                 };
                 let bs58_invite = bs58::encode(raw_invite).into_string();
@@ -112,7 +112,7 @@ pub(crate) fn setup_request_invite(
     });
 }
 
-pub(crate) fn setup_find_invite(app: &App, res: Sender<RequestToConnection>) {
+pub(crate) fn setup_find_invite(app: &App, _: Sender<RequestToConnection>) {
     app.global::<crate::Callbacks>().on_find_invite({
         move |invite, password| {
             let raw_invite = match bs58::decode(invite.as_str()).into_vec() {
@@ -123,7 +123,7 @@ pub(crate) fn setup_find_invite(app: &App, res: Sender<RequestToConnection>) {
                 }
             };
             let invite = match postcard::from_bytes::<DirectInviteRaw>(&raw_invite) {
-                Ok(invite) => invite.as_direct(password.as_bytes()),
+                Ok(invite) => invite.retrieve_direct(password.as_bytes()),
                 Err(e) => Err(e.into()),
             };
 
@@ -140,7 +140,7 @@ pub(crate) fn setup_find_invite(app: &App, res: Sender<RequestToConnection>) {
                         None,
                     )
                 }
-                Err(e) => found_invite(error_invite(), Some(e.into())),
+                Err(e) => found_invite(error_invite(), Some(e)),
             }
         }
     });

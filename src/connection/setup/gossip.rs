@@ -4,7 +4,7 @@ use libp2p::{PeerId, gossipsub, identity::Keypair};
 use sha2::Digest;
 
 ///Function that creates an id for some given `msg` from the given `peer`
-pub fn message_id_generator(msg: &gossipsub::Message, peer: PeerId) -> gossipsub::MessageId {
+pub fn message_id_generator(msg: &gossipsub::Message, _: PeerId) -> gossipsub::MessageId {
     let mut sha = sha2::Sha256::new();
     sha.update(&msg.data);
     let id = sha.finalize().to_vec();

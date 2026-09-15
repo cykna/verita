@@ -1,12 +1,5 @@
-use core::fmt::NumBuffer;
 mod gossip;
-use std::{
-    hash::{DefaultHasher, Hash, Hasher},
-    time::Duration,
-};
-
-use common::Sender;
-use libp2p::{PeerId, Swarm, SwarmBuilder, gossipsub, kad::store::MemoryStore, mdns};
+use libp2p::{Swarm, SwarmBuilder, kad::store::MemoryStore, mdns};
 
 use crate::{
     application::{RequestToUi, ResponseFromUi},
@@ -27,7 +20,7 @@ impl ApplicationConnection {
                     libp2p::kad::Config::default(),
                 );
                 Ok(ChatBehavior {
-                    gossip: gossip::behavior(&key, id)?,
+                    gossip: gossip::behavior(key, id)?,
                     mdns,
                     kademlia,
                 })

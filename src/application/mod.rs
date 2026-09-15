@@ -4,24 +4,23 @@ mod default_service;
 mod services;
 
 use arboard::Clipboard;
-use common::{Receiver, Sender};
+use common::Receiver;
 pub use default_service::*;
 pub use services::*;
 
 pub use commands::{KademliaAddressesQuantity, RequestToUi, ResponseFromUi};
 use libp2p::futures::StreamExt;
-use tracing::{error, info};
+use tracing::error;
 
 use migration::{Migrator, MigratorTrait};
 use sea_orm::{Database, DatabaseConnection};
-use slint::{ComponentHandle, Model, ModelRc, ToSharedString, VecModel, Weak};
+use slint::{ComponentHandle, ToSharedString, Weak};
 
 use crate::{
     App, MessageData, MessageOwner,
     application::{app::notifications::notify, services::ApplicationService},
-    connection::{ApplicationConnection, RequestToConnection, ResponseFromConnection},
+    connection::{ApplicationConnection, ResponseFromConnection},
     domain::{
-        invites::DirectInviteRaw,
         kademlia::KademliaRepository,
         subscription::{Subscription, SubscriptionRepository},
     },
@@ -31,6 +30,7 @@ pub struct Application<Service: ApplicationService + 'static> {
     app: Weak<App>,
     ui_receiver: Receiver<RequestToUi>,
     services: Service,
+    #[allow(dead_code)]
     clipboard: std::sync::Arc<std::sync::RwLock<Clipboard>>,
 }
 

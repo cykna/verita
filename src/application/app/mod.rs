@@ -3,10 +3,9 @@ mod invites;
 mod messages;
 pub(crate) mod notifications;
 use common::Sender;
-use slint::{ComponentHandle, Model, ModelRc, VecModel};
 
 use crate::{
-    App, NotificationData,
+    App,
     application::{Application, services::ApplicationService},
     connection::RequestToConnection,
 };

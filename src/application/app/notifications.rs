@@ -5,7 +5,7 @@ use std::{
 
 use slint::{ComponentHandle, Model, ModelRc, SharedString, VecModel};
 
-use crate::{App, NotificationData, application::app::notifications};
+use crate::{App, NotificationData};
 
 static NOTIFICATION_KEY: AtomicI32 = AtomicI32::new(0);
 
