@@ -3,6 +3,7 @@ use arboard::Clipboard;
 use color_eyre::eyre::eyre;
 use common::Sender;
 
+use sea_orm::DatabaseConnection;
 use slint::{ComponentHandle, ToSharedString, Weak};
 use tracing::{error, info};
 
@@ -10,7 +11,10 @@ use crate::{
     App, NotificationData,
     application::app::notifications::notify_data,
     connection::{RequestToConnection, ResponseFromConnection},
-    domain::invites::DirectInviteRaw,
+    domain::invites::{
+        network::DirectInviteRaw,
+        repository::{CreateInviteDescriptor, InvitesRepository},
+    },
 };
 
 pub(crate) fn error_invite() -> crate::Invite {
@@ -35,7 +39,7 @@ pub fn found_invite(
 
 pub fn exec_notifying_async(
     app: Weak<App>,
-    f: impl Future<Output = color_eyre::Result> + Send + Sync + 'static,
+    f: impl Future<Output = color_eyre::Result> + Send + 'static,
 ) -> color_eyre::Result {
     slint::invoke_from_event_loop(move || {
         slint::spawn_local(async move {
@@ -56,15 +60,20 @@ pub fn exec_notifying_async(
     })?;
     Ok(())
 }
-
+///Setups the callback 'request-invite'. This callback is intended to retrieve a new invite with the informations of the user, and then, paste it into his clipboard.
+///This callback will internally:
+/// * Generate a new invite and set it into the clipboard
+/// * Write a new local invite into the user db.
 pub(crate) fn setup_request_invite(
     app: &App,
     res: Sender<RequestToConnection>,
+    conn: DatabaseConnection,
     clipboard: std::sync::Arc<std::sync::RwLock<Clipboard>>,
 ) {
     app.global::<crate::Callbacks>().on_request_invite({
         let app = app.as_weak();
         move |duration, password| {
+            let conn = conn.clone();
             let res = res.clone();
             let clipboard = clipboard.clone();
             let app = app.clone();
@@ -89,16 +98,19 @@ pub(crate) fn setup_request_invite(
                     }
                 };
 
-                let raw_invite = {
-                    let temp = invite.retrieve_raw(&private_key, password.as_bytes())?;
-                    postcard::to_allocvec(&temp)?
-                };
-                let bs58_invite = bs58::encode(raw_invite).into_string();
-
+                let hash_invite = conn
+                    .write_invite(CreateInviteDescriptor {
+                        invite: invite,
+                        private_key: private_key,
+                        password: password.to_string().into_bytes(),
+                        max_usage: 12,
+                    })
+                    .await?;
                 {
                     let mut lock = clipboard.write().unwrap();
-                    lock.set_text(bs58_invite)?;
+                    lock.set_text(hash_invite.0)?;
                 }
+                //conn.;
                 notify_data(
                     &app.upgrade().unwrap(),
                     NotificationData::new_with_default_duration(

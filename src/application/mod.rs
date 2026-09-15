@@ -151,9 +151,13 @@ impl<S: ApplicationService> Application<S> {
             }
         });
         let clipboard = std::sync::Arc::new(std::sync::RwLock::new(Clipboard::new().unwrap()));
-        let window = Self::build_window(connection_request_channel.clone(), clipboard.clone())?;
-
         let database = Self::load_database().await?;
+
+        let window = Self::build_window(
+            connection_request_channel.clone(),
+            database.clone(),
+            clipboard.clone(),
+        )?;
 
         let mut application = Self {
             services: S::new(database, connection_request_channel),
