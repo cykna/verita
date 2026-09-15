@@ -1,5 +1,4 @@
-use argon2::{Algorithm::Argon2d, Argon2, Params, PasswordHasher};
-use bytes::{BufMut, Bytes, BytesMut};
+use argon2::{Argon2, Params};
 use chacha20poly1305::{XChaCha20Poly1305, XNonce, aead::Aead};
 use hmac::{Hmac, KeyInit, Mac};
 use libp2p::{Multiaddr, PeerId};
@@ -48,13 +47,10 @@ pub struct DirectInviteRaw {
 #[derive(Debug)]
 pub struct DirectInvite {
     metadata: DirectInviteMetadata,
-    ///Salt used to hash the contents of the metadata
-    salt: [u8; 32],
-    nonce: [u8; 24],
-    signature: [u8; 32],
 }
 
 ///The struct that is used locally to check if the connection of some
+#[allow(dead_code)]
 pub struct LocalDirectInvite {
     ///The address of the invite
     address: Multiaddr,
@@ -77,7 +73,7 @@ impl DirectInviteMetadata {
 }
 
 impl DirectInviteRaw {
-    pub fn as_direct(self, password: &[u8]) -> color_eyre::Result<DirectInvite> {
+    pub fn retrieve_direct(self, password: &[u8]) -> color_eyre::Result<DirectInvite> {
         let crypto_key = {
             let mut key = [0; 32];
             let argon = Argon2::new(
@@ -91,12 +87,7 @@ impl DirectInviteRaw {
         let decrypt_metadata = XChaCha20Poly1305::new_from_slice(&crypto_key)?
             .decrypt(&XNonce::try_from(self.nonce)?, self.metadata.as_ref())?;
         let metadata = postcard::from_bytes(&decrypt_metadata)?;
-        Ok(DirectInvite {
-            metadata,
-            salt: self.salt,
-            nonce: self.nonce,
-            signature: self.signature,
-        })
+        Ok(DirectInvite { metadata })
     }
 }
 
@@ -113,12 +104,7 @@ impl DirectInvite {
 
     ///Creates a new direct invite with salt, and signatures safely generated and the given `metadata`
     pub fn new(metadata: DirectInviteMetadata) -> Self {
-        Self {
-            metadata,
-            salt: [0; 32],
-            nonce: [0; 24],
-            signature: [0; 32],
-        }
+        Self { metadata }
     }
 
     pub fn metadata(&self) -> &DirectInviteMetadata {
@@ -126,12 +112,12 @@ impl DirectInvite {
     }
 
     ///Returns the raw representation of a direct invite to be sent across the network
-    pub fn as_raw(
+    pub fn retrieve_raw(
         self,
         private_key: &[u8; 32],
         password: &[u8],
     ) -> color_eyre::Result<DirectInviteRaw> {
-        let (salt, nonce, mut hmac) = Self::invite_crypto(&private_key);
+        let (salt, nonce, mut hmac) = Self::invite_crypto(private_key);
 
         let crypto_key = {
             let mut key = [0; 32];

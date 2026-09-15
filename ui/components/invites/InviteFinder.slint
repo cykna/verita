@@ -1,15 +1,12 @@
 import { VeritaDialog } from "../Dialog.slint";
-import {Invite} from "../../domain/invite.slint";
+import { Invite, InviteSearch } from "../../domain/Invite.slint";
 import { VerticalBox, HorizontalBox } from "std-widgets.slint";
 import { InviteRequesterOption } from "InviteRequester.slint";
 import { VeritaButton } from "../Button.slint";
 import { IconDisplay, IconSet } from "@lucide";
 import { HorizontalLine } from "../Line.slint";
 import { Theme } from "../../theme.slint";
-export struct InviteSearch {
-    invite: string,
-    password: string,
-}
+
 
 export component InviteFinder inherits VeritaDialog {
     callback on-finish(InviteSearch);
@@ -18,7 +15,7 @@ export component InviteFinder inherits VeritaDialog {
     in-out property <Invite> invite;
     VerticalBox {
         VerticalBox {
-            invite-input:=InviteRequesterOption {
+            invite-input := InviteRequesterOption {
                 title: "The invite received";
                 placeholder: "Type the invite you've got";
                 type: InputType.text;
@@ -27,28 +24,32 @@ export component InviteFinder inherits VeritaDialog {
                 }
             }
         }
+
         VerticalBox {
-            password-input:= InviteRequesterOption{
+            password-input := InviteRequesterOption {
                 title: "The password for the invite";
                 placeholder: "Type the password of the invite";
                 type: InputType.password;
             }
         }
+
         VeritaButton {
             height: box.preferred-height;
-            box:=HorizontalBox {
+            box := HorizontalBox {
                 Text {
                     text: "Finish";
                 }
+
                 IconDisplay {
                     icon: IconSet.Check;
                 }
             }
 
             clicked => {
-                on-finish({invite: invite-input.content, password: password-input.content})
+                on-finish({ invite: invite-input.content, password: password-input.content })
             }
         }
+
         if error == "": Text {
             text: invite.address;
         }

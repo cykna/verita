@@ -19,6 +19,7 @@ pub enum ResponseFromConnection {
     None,
     Invite(DirectInvite),
     PrivateKey([u8; 32]),
+
     Error(color_eyre::Report),
 }
 

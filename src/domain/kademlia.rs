@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use libp2p::{PeerId, kad::RecordKey};
+use libp2p::PeerId;
 
 use crate::{application::KademliaAddressesQuantity, domain::error::RepositoryError};
 
@@ -12,11 +12,11 @@ pub mod converters {
         Multiaddr,
         kad::{Record, RecordKey},
     };
+    #[allow(dead_code)]
     pub fn instant_to_naive(target_instant: Instant) -> NaiveDateTime {
         let now_instant = Instant::now();
         let now_system_time = SystemTime::now();
 
-        // 1. Calcula a diferença em relação ao Instant atual e aplica no SystemTime
         let target_system_time = if target_instant >= now_instant {
             let duration = target_instant.duration_since(now_instant);
             now_system_time + duration
@@ -25,10 +25,10 @@ pub mod converters {
             now_system_time - duration
         };
 
-        // 2. Converte SystemTime para DateTime<Utc> e depois extrai o NaiveDateTime
         let datetime_utc: DateTime<Utc> = target_system_time.into();
         datetime_utc.naive_utc()
     }
+    #[allow(dead_code)]
     pub fn record_to_sea(record: Record) -> database::kademlia::records::ActiveModel {
         database::kademlia::records::ActiveModel {
             key: sea_orm::ActiveValue::Set(database::RecordKey(record.key.to_vec())),
@@ -42,11 +42,11 @@ pub mod converters {
             ..Default::default()
         }
     }
-
+    #[allow(dead_code)]
     pub fn sea_to_address(model: database::kademlia::addresses::Model) -> Multiaddr {
         model.address.0
     }
-
+    #[allow(dead_code)]
     pub fn sea_to_record(model: database::kademlia::records::Model) -> color_eyre::Result<Record> {
         let expires = if let Some(expires) = model.expires_at {
             let target_system_time: SystemTime = expires.and_utc().into();
@@ -83,6 +83,7 @@ pub mod converters {
 
 #[async_trait::async_trait]
 pub trait KademliaRepository {
+    #[allow(dead_code)]
     ///Finds all the addresses to find the given `provider`
     async fn find_addresses_provided_by(
         &self,
