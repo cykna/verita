@@ -1,8 +1,11 @@
+///!The domain definitions for invites that will travel the network
 use argon2::{Argon2, Params};
 use chacha20poly1305::{XChaCha20Poly1305, XNonce, aead::Aead};
+
 use hmac::{Hmac, KeyInit, Mac};
 use libp2p::{Multiaddr, PeerId};
 use rand::Rng;
+
 use serde::{Deserialize, Serialize};
 use sha2::Sha256;
 
@@ -47,19 +50,6 @@ pub struct DirectInviteRaw {
 #[derive(Debug)]
 pub struct DirectInvite {
     metadata: DirectInviteMetadata,
-}
-
-///The struct that is used locally to check if the connection of some
-#[allow(dead_code)]
-pub struct LocalDirectInvite {
-    ///The address of the invite
-    address: Multiaddr,
-    ///The peer id of the user that generated this invite. Ideally, the user itself
-    peer: PeerId,
-    ///The maximum of usage of requests this invite can contain
-    maximum_usages: u8,
-    ///Until when this invite will be valid
-    timestamp: u64,
 }
 
 impl DirectInviteMetadata {
@@ -113,7 +103,7 @@ impl DirectInvite {
 
     ///Returns the raw representation of a direct invite to be sent across the network
     pub fn retrieve_raw(
-        self,
+        &self,
         private_key: &[u8; 32],
         password: &[u8],
     ) -> color_eyre::Result<DirectInviteRaw> {
@@ -144,5 +134,11 @@ impl DirectInvite {
                 .as_array()
                 .expect("Signature should contain 32 bytes"),
         })
+    }
+    ///Returns the hashed content of this invite with the given `private_key`and `password` ready to be sent across the network
+    pub fn to_hashed(&self, private_key: &[u8; 32], password: &[u8]) -> color_eyre::Result<String> {
+        let raw = self.retrieve_raw(private_key, password)?;
+        let bytes = postcard::to_allocvec(&raw)?;
+        Ok(bs58::encode(bytes).into_string())
     }
 }
