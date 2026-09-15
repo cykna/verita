@@ -46,4 +46,4 @@ bs58 = "0.5.1"
 
 [build-dependencies]
 lucide-slint = "1.44.0"
-slint-build = "1.16.0"
+slint-build = "1.17.1"
