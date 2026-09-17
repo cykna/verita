@@ -2,6 +2,7 @@ use arboard::Clipboard;
 mod invites;
 mod messages;
 pub(crate) mod notifications;
+mod qrcode;
 use common::Sender;
 use sea_orm::DatabaseConnection;
 

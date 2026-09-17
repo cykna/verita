@@ -26,7 +26,7 @@ impl ApplicationConnection {
                 })
             })?
             .build();
-        swarm.listen_on("/ip4/0.0.0.0/udp/0/quic-v1".parse()?)?;
+        swarm.listen_on("/ip6/::/udp/0/quic-v1".parse()?)?;
         Ok(swarm)
     }
 

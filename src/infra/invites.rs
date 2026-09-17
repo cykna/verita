@@ -2,14 +2,11 @@ use chrono::DateTime;
 use database::{Bs58String, DatabaseID, invites::ActiveModel};
 use sea_orm::{ActiveValue, DatabaseConnection, DbErr, EntityTrait, PaginatorTrait};
 
-use crate::domain::invites::{
-    network::DirectInvite,
-    repository::{CreateInviteDescriptor, InvitesRepository, LocalInvite},
-};
+use crate::domain::invites::repository::{CreateInviteDescriptor, InvitesRepository, LocalInvite};
 
 fn db_invite_to_local(invite: database::invites::Model) -> LocalInvite {
     LocalInvite {
-        id: invite.id,
+        id: invite.id as u64,
         maximum_usages: invite.maximum_usage,
         metadata: invite.invite_hash,
         timestamp: invite.timestamp,
@@ -26,7 +23,7 @@ impl InvitesRepository for DatabaseConnection {
         Ok(invites.into_iter().map(db_invite_to_local).collect())
     }
     async fn find_invite(&self, id: DatabaseID<LocalInvite>) -> Result<Option<LocalInvite>, DbErr> {
-        let invite = database::invites::Entity::find_by_id(id.raw() as u64)
+        let invite = database::invites::Entity::find_by_id(id.raw())
             .one(self)
             .await?;
         if let Some(invite) = invite {

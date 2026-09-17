@@ -17,7 +17,7 @@ use tracing::info;
 
 use crate::{
     application::RequestToUi,
-    domain::invites::{DirectInvite, DirectInviteMetadata},
+    domain::invites::network::{DirectInvite, DirectInviteMetadata},
 };
 #[derive(NetworkBehaviour)]
 pub struct ChatBehavior {

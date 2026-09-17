@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use common::Message;
 
-use crate::domain::{invites::DirectInvite, subscription::Subscription};
+use crate::domain::{invites::network::DirectInvite, subscription::Subscription};
 
 #[derive(Debug)]
 pub enum RequestToConnection {

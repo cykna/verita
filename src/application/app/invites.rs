@@ -54,6 +54,7 @@ pub fn exec_notifying_async(
                         std::time::Duration::from_secs(3),
                     ),
                 );
+                error!("Error during operation: {}", e);
             }
         })
         .unwrap();
@@ -108,8 +109,9 @@ pub(crate) fn setup_request_invite(
                     .await?;
                 {
                     let mut lock = clipboard.write().unwrap();
-                    lock.set_text(hash_invite.0)?;
+                    lock.set_text(&hash_invite.0)?;
                 }
+                info!("Copying '{}' into the clipboard", hash_invite.0);
                 //conn.;
                 notify_data(
                     &app.upgrade().unwrap(),
@@ -118,6 +120,7 @@ pub(crate) fn setup_request_invite(
                         "Successfully created the invite and wrote it to your clipboard",
                     ),
                 );
+
                 Ok(())
             });
         }
