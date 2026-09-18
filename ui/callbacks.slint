@@ -1,12 +1,15 @@
 import {NotificationData, MessageData, FoundInvite} from "domain/main.slint";
+import {RetrieveNotificationDescriptor, RequestInviteDescriptor, FindInviteDescriptor} from "domain/descriptors.slint";
+
 export global Callbacks {
     callback notify(NotificationData);
     ///Returns a notification data for the given `title` and `description` on the notification
-    callback retrieve-notification-for(string, string, duration) -> NotificationData;
+    callback retrieve-notification-for(RetrieveNotificationDescriptor) -> NotificationData;
     callback notify-end(int);
     callback send-message(MessageData);
     ///Requests an invite with the given `duration` in ms, and the given `password`
-    callback request-invite(int, string);
+    callback request-invite(RequestInviteDescriptor);
     ///Finds an invite. The first param is the invite itself, and the second, the password
-    callback find-invite(string, string) -> FoundInvite;
+    callback find-invite(FindInviteDescriptor) -> FoundInvite;
+
 }

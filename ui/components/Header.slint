@@ -7,6 +7,8 @@ export component Header inherits Rectangle{
     background: Theme.accent;
     callback request-invite;
     callback request-friend;
+    callback list-invites;
+    property <length> button-padding: 12px;
     HorizontalLayout {
         padding: parent.padding;
         alignment: space-between;
@@ -14,7 +16,7 @@ export component Header inherits Rectangle{
             IconDisplay {
                 icon: IconSet.Send;
             }
-            padding: 12px;
+            padding: button-padding;
             clicked => {
                 request-invite();
             }
@@ -23,9 +25,18 @@ export component Header inherits Rectangle{
             IconDisplay {
                 icon: IconSet.Contact;
             }
-            padding: 12px;
+            padding: button-padding;
             clicked => {
                 request-friend();
+            }
+        }
+        VeritaButton {
+            IconDisplay {
+                icon: IconSet.ListCollapse;
+            }
+            padding: button-padding;
+            clicked => {
+                list-invites();
             }
         }
     }
