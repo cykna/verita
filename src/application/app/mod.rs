@@ -2,7 +2,6 @@ use arboard::Clipboard;
 mod invites;
 mod messages;
 pub(crate) mod notifications;
-mod qrcode;
 use common::Sender;
 use sea_orm::DatabaseConnection;
 
@@ -21,6 +20,7 @@ impl<S: ApplicationService> Application<S> {
         let app = App::new()?;
         messages::setup_send_message(&app, res.clone());
         notifications::setup_notifications(&app);
+        invites::setup_find_local_invites(&app, res.clone(), conn.clone());
         invites::setup_find_invite(&app, res.clone());
         invites::setup_request_invite(&app, res, conn.clone(), clipboard.clone());
         Ok(app)

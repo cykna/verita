@@ -1,14 +1,15 @@
 use arboard::Clipboard;
 
+use chrono::Utc;
 use color_eyre::eyre::eyre;
 use common::Sender;
 
 use sea_orm::DatabaseConnection;
-use slint::{ComponentHandle, ToSharedString, Weak};
+use slint::{ComponentHandle, ModelRc, SharedPixelBuffer, ToSharedString, VecModel, Weak};
 use tracing::{error, info};
 
 use crate::{
-    App, NotificationData,
+    App, NotificationData, UIInvite,
     application::app::notifications::notify_data,
     connection::{RequestToConnection, ResponseFromConnection},
     domain::invites::{
@@ -73,7 +74,7 @@ pub(crate) fn setup_request_invite(
 ) {
     app.global::<crate::Callbacks>().on_request_invite({
         let app = app.as_weak();
-        move |duration, password| {
+        move |descriptor| {
             let conn = conn.clone();
             let res = res.clone();
             let clipboard = clipboard.clone();
@@ -81,7 +82,7 @@ pub(crate) fn setup_request_invite(
             let _ = exec_notifying_async(app.clone(), async move {
                 let invite = match res
                     .request(RequestToConnection::GenerateInvite(
-                        std::time::Duration::from_secs(duration as u64),
+                        std::time::Duration::from_secs(descriptor.duration as u64),
                     ))
                     .await
                 {
@@ -103,7 +104,7 @@ pub(crate) fn setup_request_invite(
                     .write_invite(CreateInviteDescriptor {
                         invite: invite,
                         private_key: private_key,
-                        password: password.to_string().into_bytes(),
+                        password: descriptor.password.to_string().into_bytes(),
                         max_usage: 12,
                     })
                     .await?;
@@ -129,8 +130,8 @@ pub(crate) fn setup_request_invite(
 
 pub(crate) fn setup_find_invite(app: &App, _: Sender<RequestToConnection>) {
     app.global::<crate::Callbacks>().on_find_invite({
-        move |invite, password| {
-            let raw_invite = match bs58::decode(invite.as_str()).into_vec() {
+        move |descriptor| {
+            let raw_invite = match bs58::decode(descriptor.invite.as_str()).into_vec() {
                 Ok(raw) => raw,
                 Err(e) => {
                     error!("{}", e);
@@ -138,7 +139,7 @@ pub(crate) fn setup_find_invite(app: &App, _: Sender<RequestToConnection>) {
                 }
             };
             let invite = match postcard::from_bytes::<DirectInviteRaw>(&raw_invite) {
-                Ok(invite) => invite.retrieve_direct(password.as_bytes()),
+                Ok(invite) => invite.retrieve_direct(descriptor.password.as_bytes()),
                 Err(e) => Err(e.into()),
             };
 
@@ -157,6 +158,54 @@ pub(crate) fn setup_find_invite(app: &App, _: Sender<RequestToConnection>) {
                 }
                 Err(e) => found_invite(error_invite(), Some(e)),
             }
+        }
+    });
+}
+
+///Finds the storage invites for the current user, with pagination
+pub(crate) fn setup_find_local_invites(
+    app: &App,
+    _: Sender<RequestToConnection>,
+    conn: DatabaseConnection,
+) {
+    let weak_app = app.as_weak();
+    app.on_find_invites({
+        move |page| {
+            let conn = conn.clone();
+            let app = weak_app.clone();
+            let _ = exec_notifying_async(app.clone(), async move {
+                info!(
+                    "Fecthing invites. Page: {:?}; Quantity: {:?}",
+                    page.page, page.quantity
+                );
+                let invites = conn.invites(page.quantity as u32, page.page as u32).await?;
+                info!("Retrieved Invites: {:?}", invites);
+                if !invites.is_empty()
+                    && let Some(app) = app.upgrade()
+                {
+                    let invites = invites
+                        .into_iter()
+                        .map(|i| {
+                            let img = i.qrcode_image().render::<image::Rgba<u8>>().build();
+                            let buffer = SharedPixelBuffer::clone_from_slice(
+                                &img,
+                                img.width(),
+                                img.height(),
+                            );
+
+                            info!("Image witdh x height: {}x{}", img.width(), img.height());
+
+                            UIInvite {
+                                image: slint::Image::from_rgba8(buffer),
+                                timestamp: i.timestamp.to_shared_string(),
+                                valid: i.timestamp > Utc::now(),
+                            }
+                        })
+                        .collect::<Vec<_>>();
+                    app.set_invites(ModelRc::new(VecModel::from(invites)));
+                }
+                Ok(())
+            });
         }
     });
 }

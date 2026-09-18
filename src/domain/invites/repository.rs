@@ -3,9 +3,12 @@ use std::ops::Deref;
 use chrono::{DateTime, Utc};
 ///!The domain definitions for invites that will be saved on the database and used locally
 use database::{Bs58String, DatabaseID};
+
+use qrcode::QrCode;
 use sea_orm::DbErr;
 
 use crate::domain::invites::network::{DirectInvite, DirectInviteMetadata};
+#[derive(Debug)]
 ///An invite that represents locally some invite generated and sent across
 pub struct LocalInvite {
     pub id: u64,
@@ -15,6 +18,12 @@ pub struct LocalInvite {
     pub maximum_usages: u64,
     ///Until when this invite will be valid
     pub timestamp: DateTime<Utc>,
+}
+
+impl LocalInvite {
+    pub fn qrcode_image(&self) -> QrCode {
+        QrCode::new(&self.metadata.0).unwrap()
+    }
 }
 
 pub struct CreateInviteDescriptor {

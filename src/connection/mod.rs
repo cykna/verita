@@ -65,9 +65,8 @@ impl ApplicationConnection {
                 }
             }
             SwarmEvent::Behaviour(ChatBehaviorEvent::Gossip(gossipsub::Event::Message {
-                propagation_source,
-                message_id,
                 message,
+                ..
             })) => {
                 info!("Received message: {message:?}");
                 self.ui_requester

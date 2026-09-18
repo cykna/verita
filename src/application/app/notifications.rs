@@ -4,6 +4,7 @@ use std::{
 };
 
 use slint::{ComponentHandle, Model, ModelRc, SharedString, VecModel};
+use tracing::info;
 
 use crate::{App, NotificationData};
 
@@ -52,9 +53,7 @@ pub fn notify(
 
 ///Emits a notification already built by the caller.
 pub fn notify_data(app: &App, notification: NotificationData) {
-    if let Some(app) = app.as_weak().upgrade() {
-        app.global::<crate::Callbacks>().invoke_notify(notification);
-    }
+    app.global::<crate::Callbacks>().invoke_notify(notification);
 }
 
 pub(crate) fn setup_notifications(app: &App) {
@@ -63,6 +62,7 @@ pub(crate) fn setup_notifications(app: &App) {
     app.global::<crate::Callbacks>().on_notify({
         let notifications = notifications.clone();
         move |notification| {
+            info!("Notifying content: {notification:?}");
             notifications.push(notification);
         }
     });
@@ -83,11 +83,11 @@ pub(crate) fn setup_notifications(app: &App) {
     });
 
     app.global::<crate::Callbacks>()
-        .on_retrieve_notification_for(|title, text, duration| {
+        .on_retrieve_notification_for(|descriptor| {
             NotificationData::new(
-                title,
-                text,
-                std::time::Duration::from_millis(duration as u64),
+                descriptor.title,
+                descriptor.description,
+                std::time::Duration::from_millis(descriptor.duration as u64),
             )
         });
 }
