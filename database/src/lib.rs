@@ -1,7 +1,8 @@
-use std::str::FromStr;
+use std::{marker::PhantomData, str::FromStr};
 
-use sea_orm::DeriveValueType;
+use sea_orm::{DeriveValueType, Value, sea_query::ValueType};
 
+pub mod invites;
 pub mod kademlia;
 pub mod subscriptions;
 #[derive(Clone, Debug, PartialEq, Eq, DeriveValueType)]
@@ -27,3 +28,25 @@ pub struct RecordKey(pub Vec<u8>);
 
 #[derive(Clone, Debug, PartialEq, Eq, DeriveValueType)]
 pub struct PeerId(pub Vec<u8>);
+
+#[derive(Clone, Debug, PartialEq, Eq, DeriveValueType)]
+pub struct Bs58String(pub String);
+
+#[derive(Clone, Debug, PartialEq, Eq, DeriveValueType)]
+pub struct Argon2String(pub String);
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct DatabaseID<T>(i32, PhantomData<T>);
+impl<T> DatabaseID<T> {
+    pub fn new(id: i32) -> Self {
+        Self(id, PhantomData)
+    }
+    pub fn raw(self) -> i32 {
+        self.0
+    }
+}
+impl<T> Clone for DatabaseID<T> {
+    fn clone(&self) -> Self {
+        Self(self.0, self.1)
+    }
+}

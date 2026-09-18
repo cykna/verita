@@ -1,0 +1,20 @@
+export struct RetrieveNotificationDescriptor {
+    title: string,
+    description: string,
+    duration: duration,
+}
+
+export struct RequestInviteDescriptor {
+    duration: duration,
+    password: string,
+}
+
+export struct FindInviteDescriptor {
+    invite: string,
+    password: string,
+}
+
+export struct PageRequestDescriptor {
+    page: int,
+    quantity: int,
+}

@@ -19,7 +19,6 @@ impl From<Subscription> for database::subscriptions::ActiveModel {
     fn from(subscription: Subscription) -> Self {
         database::subscriptions::ActiveModel {
             id: sea_orm::Set(subscription.id),
-            ..Default::default()
         }
     }
 }

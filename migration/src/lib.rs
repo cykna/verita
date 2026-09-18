@@ -4,6 +4,7 @@ mod m20260903_221700_create_topic_subscriptions;
 mod m20260906_163614_create_kademlia_records;
 mod m20260906_165454_create_kademlia_providers;
 mod m20260906_165515_create_kademlia_addresses;
+mod m20260917_132819_create_user_invites;
 
 pub struct Migrator;
 
@@ -15,6 +16,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20260906_163614_create_kademlia_records::Migration),
             Box::new(m20260906_165454_create_kademlia_providers::Migration),
             Box::new(m20260906_165515_create_kademlia_addresses::Migration),
+            Box::new(m20260917_132819_create_user_invites::Migration),
         ]
     }
 }

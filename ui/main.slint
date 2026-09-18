@@ -1,23 +1,105 @@
 import { Theme } from "theme.slint";
 import { Button } from "std-widgets.slint";
 import { VeritaButton } from "components/Button.slint";
-import { Chat, MessageList, MessageData, MessageOwner } from "components/Message.slint";
+import {
+    Chat,
+    MessageList,
+} from "components/Message.slint";
+import { UIInvite, Invite, FoundInvite, InviteSearch } from "domain/Invite.slint";
+import { MessageData, MessageOwner } from "domain/Message.slint";
+import { NotificationData } from "domain/Notification.slint";
+import { Header } from "components/Header.slint";
+import { InviteRequester } from "components/invites/InviteRequester.slint";
+import { InviteFinder } from "components/invites/InviteFinder.slint";
+import { Notification, TextNotification } from "components/Notification.slint";
+import { Callbacks } from "./callbacks.slint";
+import { VeritaDialog } from "components/Dialog.slint";
+import { InviteList } from "components/invites/List.slint";
+import { PageRequestDescriptor } from "domain/descriptors.slint";
+
+export { Callbacks }
 
 export component App inherits Window {
     title: "My app";
     background: Theme.background;
-    callback send-message(MessageData);
+    ///Finds all invites for the current user, with pagination
+    callback find-invites(PageRequestDescriptor);
+    in-out property <[NotificationData]> notifications: [{
+        key: 0,
+        title: "Suamae",
+        text: "Suamae gorda",
+        duration: 3s
+    }];
+    in-out property <[MessageData]> messages: [];
+    in-out property <[UIInvite]> invites: [];
 
-    in-out property <[MessageData]> messages: [
-        {content: "Suamae", owner:MessageOwner.User},
-        {content: "baleia", owner:MessageOwner.Them}
-    ];
-    VerticalLayout {
-        padding: 12px;
-        Chat {
-            messages: messages;
-            onSendMsg(content) => send-message({content:content, owner: MessageOwner.User});
+    Rectangle {
+        width: 100%;
+        height: 100%;
+
+        VerticalLayout {
+
+            Header {
+                padding: 4px;
+                request-invite => {
+                    requester.visible = true;
+                    invite-finder.visible = false;
+                };
+                request-friend => {
+                    invite-finder.visible = true;
+                    requester.visible = false;
+                }
+                list-invites => {
+                    if invites.length == 0 {
+                        find-invites({
+                            page: 0, quantity: 5
+                        })
+                    }
+                    invites-list.visible = true;
+                }
+            }
+
+            Chat {
+                messages: messages;
+                onSendMsg(content) => Callbacks.send-message({ content:content, owner: MessageOwner.User });
+            }
+        }
+
+        requester := InviteRequester {
+            width: 50%;
+            height: 50%;
+            on-finish(invite) => {
+                Callbacks.request-invite({ duration: invite.duration, password: invite.password });
+                self.visible = false;
+            }
+        }
+
+        invite-finder := InviteFinder {
+            height: 50%;
+            width: 50%;
+            on-finish(invitesearch) => {
+                let x = Callbacks.find-invite({ invite: invitesearch.invite, password: invitesearch.password });
+                if x.error != "" {
+                    Callbacks.notify(Callbacks.retrieve-notification-for({ title: "Error while trying to find invite", description: x.error, duration: 2s }));
+                } else {
+                    Callbacks.notify(Callbacks.retrieve-notification-for({ title: "Successfuly found user", description: "Found user with address: \{x.invite.address} and peer \{x.invite.peer}", duration: 2s }))
+                }
+            }
+        }
+
+        invites-list := InviteList {
+            invites: invites;
+
+        }
+        VerticalLayout {
+            x: parent.x + (parent.width / 10);
+            y: parent.height / 10;
+            for notification in notifications: TextNotification {
+                key: notification.key;
+                title: notification.title;
+                description: notification.text;
+                lifetime: notification.duration;
+            }
         }
     }
-
 }

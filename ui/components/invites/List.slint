@@ -1,0 +1,69 @@
+import { UIInvite, Invite } from "../../domain/main.slint";
+import { Theme } from "../../theme.slint";
+import { VeritaButton } from "../Button.slint";
+import { VeritaDialog } from "../Dialog.slint";
+import { IconDisplay, IconSet } from "@lucide";
+
+export component InviteInformation inherits HorizontalLayout {
+    in property <string> metadata;
+    in property <string> content;
+    padding: 12px;
+    Text {
+        text: metadata;
+        color: Theme.foreground;
+        font-size: 12px;
+    }
+
+    Rectangle {
+        background: Theme.foreground;
+        Text {
+            text: content;
+            color: Theme.accent;
+        }
+    }
+}
+
+export component InviteItem {
+    in property <UIInvite> invite;
+    in property <image> qrcode-image: invite.image;
+    property <bool> opened-qrcode:false;
+    HorizontalLayout {
+
+        VerticalLayout {
+            padding: 12px;
+            InviteInformation {
+                metadata: "Expiring Date";
+                content: invite.timestamp;
+            }
+            InviteInformation {
+                metadata: "Is Valid";
+                content: invite.valid ? "Yes" : "No";
+            }
+
+            if opened-qrcode:Image {
+                source: qrcode-image;
+                image-fit: fill;
+            }
+        }
+        VeritaButton {
+            IconDisplay {
+                icon: IconSet.Search;
+            }
+            clicked => {
+                opened-qrcode=!opened-qrcode;
+            }
+        }
+    }
+}
+
+export component InviteList inherits VeritaDialog{
+    in property <[UIInvite]> invites;
+    in property <int> grid-x: 1;
+    in property <int> grid-y: 4;
+    VerticalLayout {
+        spacing: 12px;
+        for invite[row] in invites: InviteItem {
+            invite: invite;
+        }
+    }
+}

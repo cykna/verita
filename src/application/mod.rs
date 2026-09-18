@@ -1,23 +1,25 @@
+mod app;
 mod commands;
 mod default_service;
 mod services;
 
+use arboard::Clipboard;
+use common::Receiver;
 pub use default_service::*;
 pub use services::*;
 
 pub use commands::{KademliaAddressesQuantity, RequestToUi, ResponseFromUi};
 use libp2p::futures::StreamExt;
-use tracing::{error, info};
+use tracing::error;
 
 use migration::{Migrator, MigratorTrait};
 use sea_orm::{Database, DatabaseConnection};
-use slint::{ComponentHandle, Model, ModelRc, ToSharedString, VecModel, Weak};
+use slint::{ComponentHandle, ToSharedString, Weak};
 
 use crate::{
     App, MessageData, MessageOwner,
-    application::services::ApplicationService,
-    bidirectional_channel::Channel,
-    connection::{ApplicationConnection, RequestToConnection, ResponseFromConnection},
+    application::{app::notifications::notify, services::ApplicationService},
+    connection::{ApplicationConnection, ResponseFromConnection},
     domain::{
         kademlia::KademliaRepository,
         subscription::{Subscription, SubscriptionRepository},
@@ -26,8 +28,10 @@ use crate::{
 
 pub struct Application<Service: ApplicationService + 'static> {
     app: Weak<App>,
-    ui_receiver: Channel<ResponseFromUi>,
+    ui_receiver: Receiver<RequestToUi>,
     services: Service,
+    #[allow(dead_code)]
+    clipboard: std::sync::Arc<std::sync::RwLock<Clipboard>>,
 }
 
 impl<S: ApplicationService> Application<S> {
@@ -59,36 +63,6 @@ impl<S: ApplicationService> Application<S> {
         Ok(database)
     }
 
-    pub fn build_window(res: Channel<RequestToConnection>) -> color_eyre::Result<App> {
-        let app = App::new()?;
-        app.on_send_message({
-            let app = app.as_weak();
-            move |message| {
-                let app = app.clone();
-                let res = res.clone();
-                tokio::spawn(async move {
-                    let Ok(_) = res
-                        .request(RequestToConnection::SendMessage(
-                            message.content.to_string(),
-                        ))
-                        .await
-                    else {
-                        return;
-                    };
-                    slint::invoke_from_event_loop(move || {
-                        if let Some(app) = app.upgrade() {
-                            let messages = app.get_messages().iter().collect::<VecModel<_>>();
-                            messages.push(message);
-                            app.set_messages(ModelRc::new(messages));
-                        }
-                    })
-                    .unwrap();
-                });
-            }
-        });
-        Ok(app)
-    }
-
     async fn handle_request(&mut self, req: RequestToUi) -> ResponseFromUi {
         match req {
             RequestToUi::ReceivedMessage(message) => {
@@ -96,11 +70,18 @@ impl<S: ApplicationService> Application<S> {
                     let app = self.app.clone();
                     move || {
                         if let Some(app) = app.upgrade() {
-                            app.invoke_send_message(MessageData {
-                                content: String::from_utf8_lossy(&message.data).to_shared_string(),
-                                owner: MessageOwner::Them,
-                            });
-                        } else {
+                            let text = String::from_utf8_lossy(&message.data);
+                            app.global::<crate::Callbacks>()
+                                .invoke_send_message(MessageData {
+                                    content: text.to_shared_string(),
+                                    owner: MessageOwner::Them,
+                                });
+                            notify(
+                                &app,
+                                "New message",
+                                text.to_string(),
+                                std::time::Duration::from_secs(3),
+                            );
                         }
                     }
                 })
@@ -116,16 +97,22 @@ impl<S: ApplicationService> Application<S> {
                     .unwrap();
                 ResponseFromUi::KademliaAddresses(addresses)
             }
+            RequestToUi::Notify(notfication) => {
+                if let Some(app) = self.app.upgrade() {
+                    app.global::<crate::Callbacks>().invoke_notify(notfication);
+                }
+                ResponseFromUi::Empty
+            }
         }
     }
 
     pub async fn run() -> color_eyre::Result<()> {
-        let (ui_request_channel, ui_response_channel) = Channel::new();
-        let (connection_request_channel, connection_response_channel) = Channel::new();
+        let (ui_requester, ui_listener) = common::channel::<RequestToUi>();
+        let (connection_request_channel, connection_response_channel) = common::channel();
         let (tx, mut rx) = tokio::sync::broadcast::channel::<()>(2);
 
         tokio::spawn({
-            let mut swarm = ApplicationConnection::new(ui_request_channel).await?;
+            let mut swarm = ApplicationConnection::new(ui_requester).await?;
 
             let mut rx = tx.subscribe();
             let tx = tx.clone();
@@ -144,15 +131,16 @@ impl<S: ApplicationService> Application<S> {
                             error!("{e:?}");
                             continue;
                         },
-                        Ok(req) = connection_response_channel.recv() => {
+                        Ok((req, responder)) = connection_response_channel.recv() => {
                             let response = match swarm.handle_request(req).await {
                                 Ok(res) => res,
                                 Err(e) => {
                                     error!("Error during request handling: '{e:?}'");
-                                    ResponseFromConnection::Empty
+                                    ResponseFromConnection::Error(e)
                                 }
                             };
-                            if let Err(e) = connection_response_channel.fire(response).await {
+
+                            if let Some(responder) = responder && let Err(e) = responder.send_async(response).await {
                                 error!("Couldnt fire the connection response back: '{e:?}'");
                             }
                         }
@@ -162,14 +150,20 @@ impl<S: ApplicationService> Application<S> {
                 Ok::<(), color_eyre::Report>(())
             }
         });
-        let window = Self::build_window(connection_request_channel.clone())?;
-
+        let clipboard = std::sync::Arc::new(std::sync::RwLock::new(Clipboard::new().unwrap()));
         let database = Self::load_database().await?;
+
+        let window = Self::build_window(
+            connection_request_channel.clone(),
+            database.clone(),
+            clipboard.clone(),
+        )?;
 
         let mut application = Self {
             services: S::new(database, connection_request_channel),
             app: window.as_weak(),
-            ui_receiver: ui_response_channel,
+            ui_receiver: ui_listener,
+            clipboard,
         };
         application.setup().await?;
         tokio::spawn({
@@ -180,9 +174,9 @@ impl<S: ApplicationService> Application<S> {
                             slint::quit_event_loop().unwrap();
                             break;
                         },
-                        Ok(req) = application.ui_receiver.recv() => {
+                        Ok((req, responder)) = application.ui_receiver.recv() => {
                             let response = application.handle_request(req).await;
-                            if let Err(e) = application.ui_receiver.fire(response).await {
+                            if let Some(responder) = responder && let Err(e) = responder.send_async(response).await {
                                 error!("{e}");
                                 break;
                             }

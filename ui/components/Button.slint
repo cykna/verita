@@ -1,22 +1,27 @@
 import { Theme } from "../theme.slint";
 export component VeritaButton inherits Rectangle {
-    in-out property <string> text;
-    in-out property <color> text-color: Theme.foreground;
     callback clicked;
 
-    background: Theme.primary;
-    drop-shadow-color: Theme.background;
-    drop-shadow-blur: 12px;
-    border-radius: 12px;
-    t := Text {
-        text: text;
-        color: text-color;
-        vertical-alignment: center;
+    in property <float> scale-on-hover: 1.03;
+    in property <duration> animation-duration: 300ms;
+    background: touch.has-hover ? Theme.primary.brighter(0.3) : Theme.primary;
+    transform-scale: touch.has-hover ? scale-on-hover : 1.0;
+    drop-shadow-blur: touch.has-hover ? 18px : 6px;
+    animate background, transform-scale, drop-shadow-blur {
+        duration: animation-duration;
+        easing: ease-in-out;
     }
+    drop-shadow-color: Theme.accent.darker(0.3);
 
-    max-width: t.width * 2;
-    max-height: t.height * 2;
-    TouchArea {
+    border-radius: 12px;
+
+    VerticalLayout {
+        padding: parent.padding;
+        alignment: center;
+        @children
+    }
+    touch:=TouchArea {
+        mouse-cursor: pointer;
         clicked => root.clicked();
     }
 }
