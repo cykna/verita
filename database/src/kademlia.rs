@@ -50,7 +50,7 @@ pub mod addresses {
     #[sea_orm::model]
     #[sea_orm(table_name = "kademlia_addresses")]
     pub struct Model {
-        #[sea_orm(primary_key)]
+        #[sea_orm(primary_key, auto_increment = true)]
         pub id: i32,
         pub address: MultiAddr,
         pub key: RecordKey,
