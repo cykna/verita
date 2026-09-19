@@ -4,32 +4,29 @@ use sea_orm::DatabaseConnection;
 use crate::{
     application::{ConnectionRequester, services::ApplicationService},
     connection::RequestToConnection,
-    infra::{kademlia::SeaOrmKademliaRepo, sea::SeaOrmSubscriptionRepo},
 };
 
 pub struct AppServices {
-    subscription_repo: SeaOrmSubscriptionRepo,
-    kademlia_repo: SeaOrmKademliaRepo,
+    conn: DatabaseConnection,
     connection_requester: ConnectionRequester,
 }
 
 impl ApplicationService for AppServices {
-    type Subscriptions = SeaOrmSubscriptionRepo;
-    type Kademlia = SeaOrmKademliaRepo;
+    type Subscriptions = DatabaseConnection;
+    type Kademlia = DatabaseConnection;
 
     fn connection_requester(&self) -> &ConnectionRequester {
         &self.connection_requester
     }
     fn subscription_repo(&self) -> &Self::Subscriptions {
-        &self.subscription_repo
+        &self.conn
     }
     fn kademlia_repo(&self) -> &Self::Kademlia {
-        &self.kademlia_repo
+        &self.conn
     }
     fn new(database: DatabaseConnection, channel: Sender<RequestToConnection>) -> Self {
         Self {
-            subscription_repo: SeaOrmSubscriptionRepo::new(database.clone()),
-            kademlia_repo: SeaOrmKademliaRepo::new(database),
+            conn: database,
             connection_requester: ConnectionRequester::new(channel),
         }
     }

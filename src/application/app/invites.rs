@@ -10,11 +10,14 @@ use tracing::{error, info};
 
 use crate::{
     App, NotificationData, UIInvite,
-    application::app::notifications::notify_data,
+    application::app::notifications::{notify, notify_data},
     connection::{RequestToConnection, ResponseFromConnection},
-    domain::invites::{
-        network::DirectInviteRaw,
-        repository::{CreateInviteDescriptor, InvitesRepository},
+    domain::{
+        invites::{
+            network::DirectInviteRaw,
+            repository::{CreateInviteDescriptor, InvitesRepository},
+        },
+        kademlia::KademliaRepository,
     },
 };
 
@@ -128,8 +131,14 @@ pub(crate) fn setup_request_invite(
     });
 }
 
-pub(crate) fn setup_find_invite(app: &App, _: Sender<RequestToConnection>) {
+pub(crate) fn setup_find_invite(
+    app: &App,
+    _: Sender<RequestToConnection>,
+    conn: DatabaseConnection,
+) {
     app.global::<crate::Callbacks>().on_find_invite({
+        let conn = conn.clone();
+        let app = app.as_weak();
         move |descriptor| {
             let raw_invite = match bs58::decode(descriptor.invite.as_str()).into_vec() {
                 Ok(raw) => raw,
@@ -146,15 +155,28 @@ pub(crate) fn setup_find_invite(app: &App, _: Sender<RequestToConnection>) {
             match invite {
                 Ok(invite) => {
                     info!("I found it. {}", invite.metadata().address.to_string());
-                    found_invite(
-                        crate::Invite {
-                            address: invite.metadata().address.to_shared_string(),
-                            peer: invite.metadata().peer.to_shared_string(),
-                            valid: true,
-                            timestamp: invite.metadata().timestamp as i32,
-                        },
-                        None,
-                    )
+
+                    let out = {
+                        let metadata = invite.metadata();
+                        found_invite(
+                            crate::Invite {
+                                address: metadata.address.to_shared_string(),
+                                peer: metadata.peer.to_shared_string(),
+                                valid: Utc::now().timestamp() < metadata.timestamp as i64,
+                                timestamp: metadata.timestamp as i32,
+                            },
+                            None,
+                        )
+                    };
+                    let conn = conn.clone();
+                    let _ = exec_notifying_async(app.clone(), async move {
+                        let metadata = invite.metadata();
+                        conn.register_address(metadata.peer, metadata.address.clone())
+                            .await
+                            .map_err(color_eyre::Report::new)?;
+                        Ok(())
+                    });
+                    out
                 }
                 Err(e) => found_invite(error_invite(), Some(e)),
             }

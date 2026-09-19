@@ -6,15 +6,6 @@ use crate::domain::{
     subscription::{Subscription, SubscriptionRepository},
 };
 
-pub struct SeaOrmSubscriptionRepo {
-    connection: DatabaseConnection,
-}
-
-impl SeaOrmSubscriptionRepo {
-    pub fn new(connection: DatabaseConnection) -> Self {
-        Self { connection }
-    }
-}
 impl From<Subscription> for database::subscriptions::ActiveModel {
     fn from(subscription: Subscription) -> Self {
         database::subscriptions::ActiveModel {
@@ -23,10 +14,10 @@ impl From<Subscription> for database::subscriptions::ActiveModel {
     }
 }
 
-impl SubscriptionRepository for SeaOrmSubscriptionRepo {
+impl SubscriptionRepository for DatabaseConnection {
     async fn find_all(&self) -> Result<Vec<Subscription>, RepositoryError> {
         Ok(database::subscriptions::Entity::find()
-            .all(&self.connection)
+            .all(self)
             .await
             .map_err(|e| RepositoryError::Internal(color_eyre::Report::from(e)))?
             .into_iter()
@@ -42,7 +33,7 @@ impl SubscriptionRepository for SeaOrmSubscriptionRepo {
                 .do_nothing()
                 .to_owned(),
         )
-        .exec(&self.connection)
+        .exec(self)
         .await;
         match result {
             Ok(_) | Err(DbErr::RecordNotInserted) => Ok(()),

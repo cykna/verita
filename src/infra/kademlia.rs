@@ -1,7 +1,14 @@
 use std::collections::HashMap;
 
+use database::{
+    RecordKey,
+    kademlia::{addresses, providers},
+};
 use libp2p::PeerId;
-use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, QuerySelect, QueryTrait};
+use sea_orm::{
+    ColumnTrait, DatabaseConnection, DbErr, EntityTrait, PaginatorTrait, QueryFilter, QuerySelect,
+    QueryTrait,
+};
 
 use crate::{
     application::KademliaAddressesQuantity,
@@ -11,18 +18,32 @@ use crate::{
     },
 };
 
-pub struct SeaOrmKademliaRepo {
-    connection: DatabaseConnection,
-}
-
-impl SeaOrmKademliaRepo {
-    pub fn new(connection: DatabaseConnection) -> Self {
-        Self { connection }
-    }
-}
-
 #[async_trait::async_trait]
-impl KademliaRepository for SeaOrmKademliaRepo {
+impl KademliaRepository for DatabaseConnection {
+    async fn register_address(
+        &self,
+        provider: PeerId,
+        address: libp2p::Multiaddr,
+    ) -> Result<usize, RepositoryError> {
+        addresses::Entity::insert(addresses::ActiveModel {
+            provider: sea_orm::ActiveValue::Set(database::PeerId(provider.to_bytes())),
+            key: sea_orm::ActiveValue::Set(RecordKey(provider.to_bytes())),
+            address: sea_orm::ActiveValue::Set(database::MultiAddr(address)),
+            ..Default::default()
+        })
+        .exec(self)
+        .await
+        .map_err(|e| RepositoryError::Internal(e.into()))?;
+        database::kademlia::addresses::Entity::find()
+            .filter(
+                database::kademlia::addresses::Column::Provider
+                    .eq(database::PeerId(provider.to_bytes())),
+            )
+            .count(self)
+            .await
+            .map(|v| v as usize)
+            .map_err(|e| RepositoryError::Internal(e.into()))
+    }
     async fn find_addresses(
         &self,
         quantity: KademliaAddressesQuantity,
@@ -37,7 +58,7 @@ impl KademliaRepository for SeaOrmKademliaRepo {
             .into_query();
         let addresses = addresses::Entity::find()
             .filter(addresses::Column::Provider.in_subquery(subquery))
-            .all(&self.connection)
+            .all(self)
             .await
             .map_err(|e| RepositoryError::Internal(e.into()))?;
 
@@ -62,7 +83,7 @@ impl KademliaRepository for SeaOrmKademliaRepo {
         let addresses = database::kademlia::addresses::Entity::find()
             .filter(database::kademlia::addresses::Column::Provider.eq(provider.to_bytes()))
             .limit(quantity)
-            .all(&self.connection)
+            .all(self)
             .await
             .map_err(|e| RepositoryError::Internal(e.into()))?;
         Ok(addresses

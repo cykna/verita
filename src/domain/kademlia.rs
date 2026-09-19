@@ -96,4 +96,11 @@ pub trait KademliaRepository {
         &self,
         quantity: KademliaAddressesQuantity,
     ) -> Result<HashMap<PeerId, Vec<libp2p::Multiaddr>>, RepositoryError>;
+
+    ///Inserts the given `addr` knowing it is owned by the given `provider` for later usages. Returns how much addresess the given `provider`'s got
+    async fn register_address(
+        &self,
+        provider: PeerId,
+        addr: libp2p::Multiaddr,
+    ) -> Result<usize, RepositoryError>;
 }

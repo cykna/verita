@@ -21,7 +21,7 @@ impl<S: ApplicationService> Application<S> {
         messages::setup_send_message(&app, res.clone());
         notifications::setup_notifications(&app);
         invites::setup_find_local_invites(&app, res.clone(), conn.clone());
-        invites::setup_find_invite(&app, res.clone());
+        invites::setup_find_invite(&app, res.clone(), conn.clone());
         invites::setup_request_invite(&app, res, conn.clone(), clipboard.clone());
         Ok(app)
     }
