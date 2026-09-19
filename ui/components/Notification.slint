@@ -2,6 +2,7 @@ import { IconDisplay, IconSet } from "@lucide";
 import { HorizontalBox, VerticalBox } from "std-widgets.slint";
 import { Theme } from "../theme.slint";
 import { Callbacks } from "../callbacks.slint";
+import { NotificationData } from "../domain/main.slint";
 export component Notification inherits Rectangle {
     callback on-finish;
     //duration in seconds
@@ -60,10 +61,11 @@ export component TextNotification inherits Notification {
     in property <string> title;
     in property <string> description;
     in property <int> key;
+    in property <length> width-hint: 400px;
     on-finish => {
         Callbacks.notify-end(key);
     }
-    width: 400px;
+
     padding: 16px;
     VerticalLayout {
         alignment: LayoutAlignment.stretch;
@@ -79,6 +81,19 @@ export component TextNotification inherits Notification {
             color: Theme.foreground;
             wrap: word-wrap;
             font-size: 12px;
+        }
+    }
+}
+
+export component NotificationList inherits VerticalLayout{
+    in property <[NotificationData]> notifications;
+
+    VerticalLayout {
+        for notification[index] in notifications: TextNotification {
+            key: notification.key;
+            title: notification.title;
+            description: notification.text;
+            lifetime: notification.duration;
         }
     }
 }

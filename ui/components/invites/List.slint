@@ -3,6 +3,8 @@ import { Theme } from "../../theme.slint";
 import { VeritaButton } from "../Button.slint";
 import { VeritaDialog } from "../Dialog.slint";
 import { IconDisplay, IconSet } from "@lucide";
+import { Callbacks } from "../../callbacks.slint";
+import { HorizontalBox, ScrollView } from "std-widgets.slint";
 
 export component InviteInformation inherits HorizontalLayout {
     in property <string> metadata;
@@ -35,6 +37,7 @@ export component InviteItem {
                 metadata: "Expiring Date";
                 content: invite.timestamp;
             }
+
             InviteInformation {
                 metadata: "Is Valid";
                 content: invite.valid ? "Yes" : "No";
@@ -43,27 +46,81 @@ export component InviteItem {
             if opened-qrcode:Image {
                 source: qrcode-image;
                 image-fit: fill;
+                width: qrcode-image.width * 0.5px;
+                height: qrcode-image.height * 0.5px;
             }
         }
+
         VeritaButton {
             IconDisplay {
                 icon: IconSet.Search;
             }
+
             clicked => {
-                opened-qrcode=!opened-qrcode;
+                opened-qrcode = !opened-qrcode;
             }
         }
     }
 }
 
-export component InviteList inherits VeritaDialog{
+export component InviteList inherits VeritaDialog {
+    callback refresh-invites(int);
     in property <[UIInvite]> invites;
-    in property <int> grid-x: 1;
-    in property <int> grid-y: 4;
-    VerticalLayout {
-        spacing: 12px;
-        for invite[row] in invites: InviteItem {
-            invite: invite;
+    in property <int> grid-x: 4;
+    in-out property <int> page-index: 0;
+    ScrollView {
+
+        layout:=VerticalLayout {
+            spacing: 12px;
+            if invites.length == 0: HorizontalLayout {
+                alignment: center;
+                vertical-stretch: 1;
+                height: 100%;
+                Text {
+                    text: "No invites found.";
+                    color: Theme.accent;
+                }
+            }
+            for invite[index] in invites: InviteItem {
+                invite: invite;
+            }
+        }
+
+    }
+    HorizontalBox {
+        alignment: space-between;
+        VeritaButton {
+            IconDisplay {
+                icon: IconSet.ArrowLeft;
+            }
+
+            clicked => {
+                page-index = page-index - 1;
+                refresh-invites(page-index);
+            }
+        }
+
+        VeritaButton {
+            width: self.min-width;
+            height: self.min-height;
+            IconDisplay {
+                icon: IconSet.RotateCcw;
+            }
+
+            clicked => {
+                refresh-invites(page-index);
+            }
+        }
+
+        VeritaButton {
+            IconDisplay {
+                icon: IconSet.ArrowRight;
+            }
+
+            clicked => {
+                page-index = page-index + 1;
+                refresh-invites(page-index);
+            }
         }
     }
 }

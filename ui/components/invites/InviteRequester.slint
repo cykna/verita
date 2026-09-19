@@ -10,7 +10,7 @@ export struct InviteInformation {
     password: string
 }
 
-export component InviteRequesterOption inherits VerticalBox {
+export component InviteRequesterOption inherits VerticalLayout {
     in property <string> title;
     in property <string> placeholder;
     in property <InputType> type;
@@ -18,13 +18,12 @@ export component InviteRequesterOption inherits VerticalBox {
     spacing: 8px;
     alignment: LayoutAlignment.start;
     Text {
-        preferred-width: self.min-width;
-        preferred-height: self.min-height;
         text:title;
         color: Theme.accent;
+        wrap: word-wrap;
     }
     Rectangle {
-        preferred-height: line.preferred-height;
+
         background: Theme.accent;
         border-radius: 12px;
         line:=LineEdit {

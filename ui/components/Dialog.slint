@@ -21,13 +21,15 @@ export component VeritaDialog inherits Dialog{
                     font-size: 18px;
                     font-weight: 800;
                     color: Theme.accent;
+                    wrap: word-wrap;
                 }
 
                 VeritaButton {
+                    width: self.min-width;
+                    height: self.min-height;
                     icon := IconDisplay {
                         icon: IconSet.X;
                     }
-
                     clicked => {
                         root.visible = false;
                         on-close-request();
