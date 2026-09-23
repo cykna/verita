@@ -2,7 +2,7 @@ use std::ops::Deref;
 
 use chrono::{DateTime, Utc};
 ///!The domain definitions for invites that will be saved on the database and used locally
-use database::{Bs58String, DatabaseID};
+use database::{Bs58String, invites::LocalInviteId};
 
 use qrcode::QrCode;
 use sea_orm::DbErr;
@@ -52,7 +52,7 @@ impl CreateInviteDescriptor {
 #[async_trait::async_trait]
 pub trait InvitesRepository {
     async fn invites(&self, quantity: u32, page: u32) -> Result<Vec<LocalInvite>, DbErr>;
-    async fn find_invite(&self, id: DatabaseID<LocalInvite>) -> Result<Option<LocalInvite>, DbErr>;
+    async fn find_invite(&self, id: LocalInviteId) -> Result<Option<LocalInvite>, DbErr>;
     ///Writes an invite with the given `descriptor` and returns the string that represents it already hashed and on base58
     async fn write_invite(
         &self,

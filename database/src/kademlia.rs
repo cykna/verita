@@ -2,7 +2,7 @@ pub mod records {
     use sea_orm::EntityTrait;
     use sea_orm::entity::prelude::*;
 
-    use crate::{PeerId, RecordKey};
+    use crate::{PeerId, RecordKey, entity_id};
     #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
     #[sea_orm::model]
     #[sea_orm(table_name = "kademlia_records")]
@@ -18,12 +18,14 @@ pub mod records {
     pub enum Relation {}
 
     impl ActiveModelBehavior for ActiveModel {}
+    entity_id!(RecordId);
 }
 pub mod providers {
+
     use sea_orm::EntityTrait;
     use sea_orm::entity::prelude::*;
 
-    use crate::{PeerId, RecordKey};
+    use crate::{PeerId, RecordKey, entity_id};
     #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
     #[sea_orm::model]
     #[sea_orm(table_name = "kademlia_providers")]
@@ -35,16 +37,24 @@ pub mod providers {
         pub expires_at: Option<DateTime>,
     }
     #[derive(Clone, Debug, PartialEq, Eq, EnumIter, DeriveRelation)]
-    pub enum Relation {}
-
+    pub enum Relation {
+        #[sea_orm(has_many = "super::addresses::Entity")]
+        Addresses,
+    }
+    impl Related<super::addresses::Entity> for Entity {
+        fn to() -> RelationDef {
+            Relation::Addresses.def()
+        }
+    }
     impl ActiveModelBehavior for ActiveModel {}
+    entity_id!(ProviderId);
 }
 
 pub mod addresses {
     use sea_orm::EntityTrait;
     use sea_orm::entity::prelude::*;
 
-    use crate::{MultiAddr, PeerId, RecordKey};
+    use crate::{MultiAddr, entity_id};
 
     #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
     #[sea_orm::model]
@@ -52,12 +62,24 @@ pub mod addresses {
     pub struct Model {
         #[sea_orm(primary_key, auto_increment = true)]
         pub id: i32,
+        pub provider_id: i32,
         pub address: MultiAddr,
-        pub key: RecordKey,
-        pub provider: PeerId, //key and provider point to the one in kademlia_providers
     }
-    #[derive(Clone, Debug, PartialEq, Eq, EnumIter, DeriveRelation)]
-    pub enum Relation {}
 
+    #[derive(Clone, Debug, PartialEq, Eq, EnumIter, DeriveRelation)]
+    pub enum Relation {
+        #[sea_orm(
+            belongs_to = "super::providers::Entity",
+            from = "Column::ProviderId",
+            to = "super::providers::Column::Id"
+        )]
+        Provider,
+    }
+    impl Related<super::providers::Entity> for Entity {
+        fn to() -> RelationDef {
+            Relation::Provider.def()
+        }
+    }
     impl ActiveModelBehavior for ActiveModel {}
+    entity_id!(AddressId);
 }

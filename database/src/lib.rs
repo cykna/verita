@@ -35,18 +35,21 @@ pub struct Bs58String(pub String);
 #[derive(Clone, Debug, PartialEq, Eq, DeriveValueType)]
 pub struct Argon2String(pub String);
 
-#[derive(Debug, PartialEq, Eq)]
-pub struct DatabaseID<T>(i32, PhantomData<T>);
-impl<T> DatabaseID<T> {
-    pub fn new(id: i32) -> Self {
-        Self(id, PhantomData)
-    }
-    pub fn raw(self) -> i32 {
-        self.0
-    }
-}
-impl<T> Clone for DatabaseID<T> {
-    fn clone(&self) -> Self {
-        Self(self.0, self.1)
-    }
+#[macro_export]
+macro_rules! entity_id {
+    ($name:ident) => {
+        #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, DeriveValueType)]
+        pub struct $name(i32);
+
+        impl From<i32> for $name {
+            fn from(id: i32) -> Self {
+                Self(id)
+            }
+        }
+        impl Into<i32> for $name {
+            fn into(self) -> i32 {
+                self.0
+            }
+        }
+    };
 }

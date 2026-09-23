@@ -2,12 +2,15 @@ use std::collections::HashMap;
 
 use database::{
     RecordKey,
-    kademlia::{addresses, providers},
+    kademlia::{
+        addresses,
+        providers::{self, ProviderId},
+    },
 };
 use libp2p::PeerId;
 use sea_orm::{
-    ColumnTrait, DatabaseConnection, DbErr, EntityTrait, PaginatorTrait, QueryFilter, QuerySelect,
-    QueryTrait,
+    ColumnTrait, DatabaseConnection, DbErr, EntityTrait, JoinType, PaginatorTrait, QueryFilter,
+    QuerySelect, QueryTrait,
 };
 
 use crate::{
@@ -25,9 +28,18 @@ impl KademliaRepository for DatabaseConnection {
         provider: PeerId,
         address: libp2p::Multiaddr,
     ) -> Result<usize, RepositoryError> {
+        let Some(provider) = providers::Entity::find()
+            .select_only()
+            .column(providers::Column::Id)
+            .filter(providers::Column::Provider.eq(database::PeerId(provider.to_bytes())))
+            .one(self)
+            .await
+            .map_err(|e| RepositoryError::Internal(e.into()))?
+        else {
+            return Ok(0);
+        };
         addresses::Entity::insert(addresses::ActiveModel {
-            provider: sea_orm::ActiveValue::Set(database::PeerId(provider.to_bytes())),
-            key: sea_orm::ActiveValue::Set(RecordKey(provider.to_bytes())),
+            provider_id: sea_orm::ActiveValue::Set(provider.id),
             address: sea_orm::ActiveValue::Set(database::MultiAddr(address)),
             ..Default::default()
         })
@@ -35,10 +47,7 @@ impl KademliaRepository for DatabaseConnection {
         .await
         .map_err(|e| RepositoryError::Internal(e.into()))?;
         database::kademlia::addresses::Entity::find()
-            .filter(
-                database::kademlia::addresses::Column::Provider
-                    .eq(database::PeerId(provider.to_bytes())),
-            )
+            .filter(database::kademlia::addresses::Column::ProviderId.eq(provider.id))
             .count(self)
             .await
             .map(|v| v as usize)
@@ -50,29 +59,26 @@ impl KademliaRepository for DatabaseConnection {
     ) -> Result<HashMap<libp2p::PeerId, Vec<libp2p::Multiaddr>>, RepositoryError> {
         use database::kademlia::{addresses, providers};
         // return get_addresses(where: addr.provider in get_providers(quantity))
-        let subquery = providers::Entity::find()
-            .select_only()
-            .column(providers::Column::Provider)
-            .group_by(providers::Column::Provider)
+        let providers = providers::Entity::find()
             .limit(quantity)
-            .into_query();
-        let addresses = addresses::Entity::find()
-            .filter(addresses::Column::Provider.in_subquery(subquery))
+            .find_with_related(addresses::Entity)
             .all(self)
             .await
-            .map_err(|e| RepositoryError::Internal(e.into()))?;
+            .map_err(|e| RepositoryError::Internal(e.into()))?
+            .into_iter()
+            .map(|(provider, addresses)| {
+                Ok((
+                    PeerId::from_bytes(&provider.provider.0)
+                        .map_err(|e| RepositoryError::Internal(color_eyre::Report::new(e)))?,
+                    addresses
+                        .into_iter()
+                        .map(|a| libp2p::Multiaddr::from(a.address.0))
+                        .collect::<Vec<_>>(),
+                ))
+            })
+            .collect::<Result<HashMap<_, _>, RepositoryError>>()?;
 
-        let mut out = HashMap::new();
-        for address in addresses {
-            let p2ppeerid = PeerId::from_bytes(&address.provider.0)
-                .map_err(|e| RepositoryError::InvalidContent(color_eyre::Report::new(e)))?;
-            let p2paddress = address.address.0;
-
-            out.entry(p2ppeerid)
-                .or_insert_with(Vec::new)
-                .push(p2paddress);
-        }
-        Ok(out)
+        Ok(providers)
     }
 
     async fn find_addresses_provided_by(
@@ -80,15 +86,22 @@ impl KademliaRepository for DatabaseConnection {
         provider: PeerId,
         quantity: KademliaAddressesQuantity,
     ) -> Result<Vec<libp2p::Multiaddr>, RepositoryError> {
-        let addresses = database::kademlia::addresses::Entity::find()
-            .filter(database::kademlia::addresses::Column::Provider.eq(provider.to_bytes()))
+        let addresses = providers::Entity::find()
+            .filter(providers::Column::Provider.eq(provider.to_bytes()))
+            .limit(1)
+            .find_with_related(addresses::Entity)
             .limit(quantity)
             .all(self)
             .await
             .map_err(|e| RepositoryError::Internal(e.into()))?;
-        Ok(addresses
-            .into_iter()
-            .map(converters::sea_to_address)
-            .collect::<Vec<_>>())
+        if addresses.len() == 0 {
+            Ok(vec![])
+        } else {
+            Ok(addresses[0]
+                .1
+                .iter()
+                .map(|addr| libp2p::Multiaddr::from(addr.address.0.clone()))
+                .collect::<Vec<_>>())
+        }
     }
 }

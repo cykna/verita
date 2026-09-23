@@ -1,7 +1,7 @@
 use sea_orm::EntityTrait;
 use sea_orm::entity::prelude::*;
 
-use crate::Bs58String;
+use crate::{Bs58String, entity_id};
 
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
 #[sea_orm::model]
@@ -19,3 +19,5 @@ pub struct Model {
 pub enum Relation {}
 
 impl ActiveModelBehavior for ActiveModel {}
+
+entity_id!(LocalInviteId);

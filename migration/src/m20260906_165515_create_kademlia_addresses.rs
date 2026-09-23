@@ -21,22 +21,13 @@ impl MigrationTrait for Migration {
                 Table::create()
                     .table("kademlia_addresses")
                     .col(integer(Column::Id).auto_increment().primary_key())
-                    .col(blob(Column::Key))
-                    .col(blob(Column::Provider))
+                    .col(integer(Column::ProviderId).not_null())
                     .col(blob(Column::Address).not_null())
-                    .index(
-                        Index::create()
-                            .name("kademlia-provider-address")
-                            .col(Column::Provider),
-                    )
                     .foreign_key(
                         ForeignKey::create()
                             .name("fk-addresses-provider")
-                            .from("kademlia_addresses", (Column::Key, Column::Provider))
-                            .to(
-                                "kademlia_providers",
-                                (ProviderColumn::Key, ProviderColumn::Provider),
-                            )
+                            .from("kademlia_addresses", Column::ProviderId)
+                            .to("kademlia_providers", ProviderColumn::Key)
                             .on_delete(ForeignKeyAction::Cascade)
                             .on_update(ForeignKeyAction::Cascade),
                     )
