@@ -8,8 +8,10 @@ use std::ops::{Deref, DerefMut};
 use libp2p::{
     Multiaddr, PeerId, Swarm,
     gossipsub::{self, IdentTopic},
+    identify,
     kad::{self, store::MemoryStore},
     mdns,
+    multiaddr::Protocol,
     swarm::{NetworkBehaviour, SwarmEvent},
 };
 
@@ -24,6 +26,7 @@ pub struct ChatBehavior {
     gossip: gossipsub::Behaviour,
     mdns: mdns::tokio::Behaviour,
     kademlia: kad::Behaviour<MemoryStore>,
+    identify: identify::Behaviour,
 }
 
 pub struct ApplicationConnection {
@@ -32,6 +35,11 @@ pub struct ApplicationConnection {
 }
 
 impl ApplicationConnection {
+    fn is_global_ipv6(addr: &Multiaddr) -> bool {
+        addr.iter()
+            .any(|p| matches!(p, Protocol::Ip6(ip) if ip.octets()[0] & 0xe0 == 0x20))
+    }
+
     ///Saves the given `peer` knowing its address is the given `addr`
     fn save_peer(&mut self, peer: PeerId, addr: Multiaddr) {
         self.swarm.behaviour_mut().kademlia.add_address(&peer, addr);
@@ -74,6 +82,10 @@ impl ApplicationConnection {
                     .await
                     .ok();
             }
+            SwarmEvent::NewExternalAddrCandidate { address } => {
+                info!("Confirming external address candidate: {address}");
+                self.swarm.add_external_address(address);
+            }
             _ => {}
         }
         Ok(())
@@ -92,12 +104,23 @@ impl ApplicationConnection {
                     .unwrap()
                     .duration_since(std::time::UNIX_EPOCH)?
                     .as_secs();
-                if let Some(listener) = self.swarm.listeners().next() {
-                    let metadata = DirectInviteMetadata::new(
-                        listener.clone(),
-                        *self.swarm.local_peer_id(),
-                        timestamp,
-                    );
+                if let Some(address) = self
+                    .swarm
+                    .external_addresses()
+                    .filter(|a| Self::is_global_ipv6(a))
+                    .next()
+                    .or_else(|| {
+                        self.swarm
+                            .listeners()
+                            .filter(|a| Self::is_global_ipv6(a))
+                            .next()
+                    })
+                    .or_else(|| self.swarm.external_addresses().next())
+                    .or_else(|| self.swarm.listeners().next())
+                    .cloned()
+                {
+                    let metadata =
+                        DirectInviteMetadata::new(address, *self.swarm.local_peer_id(), timestamp);
                     Ok(ResponseFromConnection::Invite(DirectInvite::new(metadata)))
                 } else {
                     tracing::error!(

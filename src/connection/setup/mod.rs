@@ -1,5 +1,5 @@
 mod gossip;
-use libp2p::{Swarm, SwarmBuilder, kad::store::MemoryStore, mdns};
+use libp2p::{Swarm, SwarmBuilder, identify, kad::store::MemoryStore, mdns};
 
 use crate::{
     application::{RequestToUi, ResponseFromUi},
@@ -19,14 +19,19 @@ impl ApplicationConnection {
                     MemoryStore::new(id),
                     libp2p::kad::Config::default(),
                 );
+                let identify = identify::Behaviour::new(identify::Config::new(
+                    "/verita/0.0.1".to_string(),
+                    key.public(),
+                ));
                 Ok(ChatBehavior {
                     gossip: gossip::behavior(key, id)?,
                     mdns,
                     kademlia,
+                    identify,
                 })
             })?
             .build();
-        swarm.listen_on("/ip6/::/udp/0/quic-v1".parse()?)?;
+        swarm.listen_on("/ip6/::/udp/40499/quic-v1".parse()?)?;
         Ok(swarm)
     }
 
