@@ -95,5 +95,9 @@ export component InviteFinder inherits VeritaDialog {
         InviteContent {
             invite: invite;
         }
+
+        if error == "": Text {
+            text: invite.address;
+        }
     }
 }

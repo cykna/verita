@@ -10,6 +10,7 @@ use crate::{
     },
 };
 
+
 #[derive(Clone)]
 pub struct ConnectionRequester {
     channel: Sender<RequestToConnection>,
@@ -37,6 +38,7 @@ impl ConnectionRequester {
             }))
             .await?;
         Ok(())
+
     }
 
     pub async fn generate_invite(&self, secs: u64) -> color_eyre::Result<DirectInvite> {

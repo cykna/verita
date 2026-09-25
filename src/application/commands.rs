@@ -3,8 +3,8 @@ use std::collections::HashMap;
 use common::Message;
 use libp2p::{Multiaddr, PeerId};
 
-use crate::NotificationData;
 
+use crate::NotificationData;
 pub type KademliaAddressesQuantity = Option<u64>;
 
 #[derive(Debug)]

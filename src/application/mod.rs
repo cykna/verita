@@ -159,6 +159,12 @@ impl<S: ApplicationService> Application<S> {
             clipboard.clone(),
         )?;
 
+        let window = Self::build_window(
+            connection_request_channel.clone(),
+            database.clone(),
+            clipboard.clone(),
+        )?;
+
         let mut application = Self {
             services,
             app: window.as_weak(),
