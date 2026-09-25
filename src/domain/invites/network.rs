@@ -1,0 +1,144 @@
+///!The domain definitions for invites that will travel the network
+use argon2::{Argon2, Params};
+use chacha20poly1305::{XChaCha20Poly1305, XNonce, aead::Aead};
+
+use hmac::{Hmac, KeyInit, Mac};
+use libp2p::{Multiaddr, PeerId};
+use rand::Rng;
+
+use serde::{Deserialize, Serialize};
+use sha2::Sha256;
+
+mod peer_id_serde {
+    use super::*;
+    use serde::{Deserializer, Serializer};
+
+    pub fn serialize<S>(peer: &PeerId, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_bytes(&peer.to_bytes())
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<PeerId, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let bytes = Vec::<u8>::deserialize(deserializer)?;
+
+        PeerId::from_bytes(&bytes).map_err(serde::de::Error::custom)
+    }
+}
+///An invite is a way to find another user on the web. It contains its address, Id, and metadata to check if the content is properly assigned, valid, and etc.
+#[derive(Serialize, Deserialize, Debug)]
+pub struct DirectInviteMetadata {
+    pub address: Multiaddr,
+    #[serde(with = "peer_id_serde")]
+    pub peer: PeerId,
+    pub timestamp: u64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct DirectInviteRaw {
+    metadata: Vec<u8>,
+    ///Salt used to hash the contents of the metadata
+    salt: [u8; 32],
+    nonce: [u8; 24],
+    signature: [u8; 32],
+}
+
+#[derive(Debug)]
+pub struct DirectInvite {
+    metadata: DirectInviteMetadata,
+}
+
+impl DirectInviteMetadata {
+    pub fn new(address: Multiaddr, peer: PeerId, timestamp: u64) -> Self {
+        Self {
+            address,
+            peer,
+            timestamp,
+        }
+    }
+}
+
+impl DirectInviteRaw {
+    pub fn retrieve_direct(self, password: &[u8]) -> color_eyre::Result<DirectInvite> {
+        let crypto_key = {
+            let mut key = [0; 32];
+            let argon = Argon2::new(
+                argon2::Algorithm::Argon2id,
+                argon2::Version::V0x13,
+                Params::default(),
+            );
+            argon.hash_password_into(password, &self.salt, &mut key)?;
+            key
+        };
+        let decrypt_metadata = XChaCha20Poly1305::new_from_slice(&crypto_key)?
+            .decrypt(&XNonce::try_from(self.nonce)?, self.metadata.as_ref())?;
+        let metadata = postcard::from_bytes(&decrypt_metadata)?;
+        Ok(DirectInvite { metadata })
+    }
+}
+
+impl DirectInvite {
+    ///Retrieves cryptographic safe contents for using on a direct invite. Returns the salt and the nonce to sign the invite metadata.
+    pub fn invite_crypto(private_key: &[u8; 32]) -> ([u8; 32], [u8; 24], Hmac<Sha256>) {
+        let mut salt = [0; 32];
+        let mut nonce = [0; 24];
+        rand::rng().fill_bytes(&mut salt);
+        rand::rng().fill_bytes(&mut nonce);
+        let hmac = Hmac::new_from_slice(private_key).expect("Size should match properly to sha256");
+        (salt, nonce, hmac)
+    }
+
+    ///Creates a new direct invite with salt, and signatures safely generated and the given `metadata`
+    pub fn new(metadata: DirectInviteMetadata) -> Self {
+        Self { metadata }
+    }
+
+    pub fn metadata(&self) -> &DirectInviteMetadata {
+        &self.metadata
+    }
+
+    ///Returns the raw representation of a direct invite to be sent across the network
+    pub fn retrieve_raw(
+        &self,
+        private_key: &[u8; 32],
+        password: &[u8],
+    ) -> color_eyre::Result<DirectInviteRaw> {
+        let (salt, nonce, mut hmac) = Self::invite_crypto(private_key);
+
+        let crypto_key = {
+            let mut key = [0; 32];
+            let argon = Argon2::new(
+                argon2::Algorithm::Argon2id,
+                argon2::Version::V0x13,
+                Params::default(),
+            );
+            argon.hash_password_into(password, &salt, &mut key)?;
+            key
+        };
+
+        let metadata = postcard::to_allocvec(&self.metadata)?;
+        let encrypt_metadata = XChaCha20Poly1305::new_from_slice(&crypto_key)?
+            .encrypt(&XNonce::try_from(nonce)?, metadata.as_ref())?;
+        hmac.update(&encrypt_metadata);
+        let signature = hmac.finalize();
+        Ok(DirectInviteRaw {
+            metadata: encrypt_metadata,
+            salt,
+            nonce,
+            signature: *signature
+                .as_bytes()
+                .as_array()
+                .expect("Signature should contain 32 bytes"),
+        })
+    }
+    ///Returns the hashed content of this invite with the given `private_key`and `password` ready to be sent across the network
+    pub fn to_hashed(&self, private_key: &[u8; 32], password: &[u8]) -> color_eyre::Result<String> {
+        let raw = self.retrieve_raw(private_key, password)?;
+        let bytes = postcard::to_allocvec(&raw)?;
+        Ok(bs58::encode(bytes).into_string())
+    }
+}

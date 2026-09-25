@@ -28,7 +28,6 @@ export global LightPalette {
 
 export global Theme {
     in-out property<bool> dark-mode: false;
-
     out property<color> background: dark-mode ? DarkPalette.background : LightPalette.background;
     out property<color> surface: dark-mode ? DarkPalette.surface : LightPalette.surface;
     out property<color> primary: dark-mode ? DarkPalette.primary : LightPalette.primary;

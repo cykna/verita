@@ -1,5 +1,4 @@
-use sea_orm::{ActiveValue, DatabaseConnection, DbErr, EntityTrait, InsertResult};
-
+use sea_orm::EntityTrait;
 use sea_orm::entity::prelude::*;
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
 #[sea_orm::model]
@@ -12,16 +11,3 @@ pub struct Model {
 pub enum Relation {}
 
 impl ActiveModelBehavior for ActiveModel {}
-
-pub struct Subscription {
-    pub id: String,
-}
-
-impl From<Subscription> for ActiveModel {
-    fn from(subscription: Subscription) -> Self {
-        ActiveModel {
-            id: ActiveValue::Set(subscription.id.into()),
-            ..Default::default()
-        }
-    }
-}
