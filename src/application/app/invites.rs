@@ -2,7 +2,6 @@ use arboard::Clipboard;
 
 use chrono::Utc;
 use color_eyre::eyre::eyre;
-use common::Sender;
 
 use sea_orm::DatabaseConnection;
 use slint::{ComponentHandle, ModelRc, SharedPixelBuffer, ToSharedString, VecModel};
@@ -10,7 +9,10 @@ use tracing::{error, info};
 
 use crate::{
     App, NotificationData, UIInvite,
-    application::app::{exec_notifying_async, notifications::notify_data},
+    application::{
+        ConnectionRequester, InsertInviteDescriptor,
+        app::{exec_notifying_async, notifications::notify_data},
+    },
     connection::{RequestToConnection, ResponseFromConnection},
     domain::{
         invites::{
@@ -47,7 +49,7 @@ pub fn found_invite(
 /// * Write a new local invite into the user db.
 pub(crate) fn setup_request_invite(
     app: &App,
-    res: Sender<RequestToConnection>,
+    res: ConnectionRequester,
     conn: DatabaseConnection,
     clipboard: std::sync::Arc<std::sync::RwLock<Clipboard>>,
 ) {
@@ -59,25 +61,8 @@ pub(crate) fn setup_request_invite(
             let clipboard = clipboard.clone();
             let app = app.clone();
             let _ = exec_notifying_async(app.clone(), async move {
-                let invite = match res
-                    .request(RequestToConnection::GenerateInvite(
-                        std::time::Duration::from_secs(descriptor.duration as u64),
-                    ))
-                    .await
-                {
-                    Ok(ResponseFromConnection::Invite(invite)) => invite,
-                    Ok(e) => return Err(eyre!("Invalid response {e:?}")),
-                    Err(e) => {
-                        return Err(eyre!("Internal error during request for invite: {e}"));
-                    }
-                };
-                let private_key = match res.request(RequestToConnection::GrantPrivateKey).await {
-                    Ok(ResponseFromConnection::PrivateKey(key)) => key,
-                    Ok(e) => return Err(eyre!("Invalid response {e:?}")),
-                    Err(e) => {
-                        return Err(eyre!("Internal error during request for invite: {e}",));
-                    }
-                };
+                let invite = res.generate_invite(descriptor.duration as u64).await?;
+                let private_key = res.grant_private_key().await?;
 
                 let hash_invite = conn
                     .write_invite(CreateInviteDescriptor {
@@ -107,11 +92,7 @@ pub(crate) fn setup_request_invite(
     });
 }
 
-pub(crate) fn setup_find_invite(
-    app: &App,
-    sender: Sender<RequestToConnection>,
-    conn: DatabaseConnection,
-) {
+pub(crate) fn setup_find_invite(app: &App, sender: ConnectionRequester, conn: DatabaseConnection) {
     app.global::<crate::Callbacks>().on_find_invite({
         let conn = conn.clone();
         let app = app.as_weak();
@@ -134,10 +115,22 @@ pub(crate) fn setup_find_invite(
 
                     let out = {
                         let metadata = invite.metadata();
-                        sender.fire(RequestToConnection::InsertInvite(
-                            metadata.address,
-                            metadata.peer,
-                        ))?;
+                        {
+                            let address = metadata.address.clone();
+                            let peer = metadata.peer.clone();
+                            let sender = sender.clone();
+                            let conn = conn.clone();
+                            let _ = exec_notifying_async(app.clone(), async move {
+                                sender
+                                    .insert_invite(InsertInviteDescriptor {
+                                        conn: &conn,
+                                        address,
+                                        peer,
+                                    })
+                                    .await?;
+                                Ok(())
+                            });
+                        }
                         found_invite(
                             crate::Invite {
                                 address: metadata.address.to_shared_string(),
@@ -168,7 +161,7 @@ pub(crate) fn setup_find_invite(
 ///Finds the storage invites for the current user, with pagination
 pub(crate) fn setup_find_local_invites(
     app: &App,
-    _: Sender<RequestToConnection>,
+    _: ConnectionRequester,
     conn: DatabaseConnection,
 ) {
     let weak_app = app.as_weak();

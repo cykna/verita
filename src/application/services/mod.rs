@@ -4,7 +4,7 @@ use crate::{
     domain::{kademlia::KademliaRepository, subscription::SubscriptionRepository},
 };
 use common::Sender;
-pub use connection_requester::ConnectionRequester;
+pub use connection_requester::*;
 use sea_orm::DatabaseConnection;
 
 pub trait ApplicationService: Send + Sync {

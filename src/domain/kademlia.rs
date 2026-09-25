@@ -84,7 +84,7 @@ pub mod converters {
 #[async_trait::async_trait]
 pub trait KademliaRepository {
     #[allow(dead_code)]
-    ///Finds all the addresses to find the given `provider`
+    ///Finds all the addresses to find the given `provider`. If the quantity is None, it returns all the addresses
     async fn find_addresses_provided_by(
         &self,
         provider: PeerId,

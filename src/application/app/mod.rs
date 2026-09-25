@@ -8,13 +8,15 @@ use slint::Weak;
 
 use crate::{
     App,
-    application::{Application, app::notifications::notify_data, services::ApplicationService},
-    connection::RequestToConnection,
+    application::{
+        Application, ConnectionRequester, app::notifications::notify_data,
+        services::ApplicationService,
+    },
 };
 
 impl<S: ApplicationService> Application<S> {
     pub fn build_window(
-        res: Sender<RequestToConnection>,
+        res: ConnectionRequester,
         conn: DatabaseConnection,
         clipboard: std::sync::Arc<std::sync::RwLock<Clipboard>>,
     ) -> color_eyre::Result<App> {
