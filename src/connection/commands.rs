@@ -1,6 +1,7 @@
 use std::time::Duration;
 
 use common::Message;
+use libp2p::{Multiaddr, PeerId};
 
 use crate::domain::{invites::network::DirectInvite, subscription::Subscription};
 
@@ -12,6 +13,7 @@ pub enum RequestToConnection {
     ///Creates an invite that will be kept alive until the given timestamp
     GenerateInvite(Duration),
     GrantPrivateKey,
+    InsertInvite(Multiaddr, PeerId),
 }
 
 #[derive(Debug)]

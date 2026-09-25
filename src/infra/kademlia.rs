@@ -1,24 +1,17 @@
 use std::collections::HashMap;
 
-use database::{
-    RecordKey,
-    kademlia::{
-        addresses,
-        providers::{self, ProviderId},
-    },
+use database::kademlia::{
+    addresses,
+    providers::{self},
 };
 use libp2p::PeerId;
 use sea_orm::{
-    ColumnTrait, DatabaseConnection, DbErr, EntityTrait, JoinType, PaginatorTrait, QueryFilter,
-    QuerySelect, QueryTrait,
+    ColumnTrait, DatabaseConnection, EntityTrait, PaginatorTrait, QueryFilter, QuerySelect,
 };
 
 use crate::{
     application::KademliaAddressesQuantity,
-    domain::{
-        error::RepositoryError,
-        kademlia::{KademliaRepository, converters},
-    },
+    domain::{error::RepositoryError, kademlia::KademliaRepository},
 };
 
 #[async_trait::async_trait]

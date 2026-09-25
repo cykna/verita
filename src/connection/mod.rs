@@ -1,5 +1,6 @@
 mod commands;
 mod setup;
+use color_eyre::eyre::eyre;
 pub use commands::*;
 use common::Sender;
 
@@ -37,7 +38,7 @@ pub struct ApplicationConnection {
 impl ApplicationConnection {
     fn is_global_ipv6(addr: &Multiaddr) -> bool {
         addr.iter()
-            .any(|p| matches!(p, Protocol::Ip6(ip) if ip.octets()[0] & 0xe0 == 0x20))
+            .any(|p| matches!(p, Protocol::Ip6(ip) if ip.octets()[0] & 0b1110_0000 == 0b0010_0000))
     }
 
     ///Saves the given `peer` knowing its address is the given `addr`
@@ -96,6 +97,22 @@ impl ApplicationConnection {
         request: RequestToConnection,
     ) -> color_eyre::Result<ResponseFromConnection> {
         match request {
+            RequestToConnection::InsertInvite(address, peer) => {
+                self.swarm.add_peer_address(peer, address.clone());
+                let routing_update = self
+                    .swarm
+                    .behaviour_mut()
+                    .kademlia
+                    .add_address(&peer, address);
+                match routing_update {
+                    kad::RoutingUpdate::Success => Ok(ResponseFromConnection::None),
+                    kad::RoutingUpdate::Failed => {
+                        Err(eyre!("Failed to add address to routing table"))
+                    }
+                    kad::RoutingUpdate::Pending => Err(eyre!("Routing update is pending")),
+                }
+            }
+
             RequestToConnection::GrantPrivateKey => Ok(ResponseFromConnection::PrivateKey([0; 32])),
 
             RequestToConnection::GenerateInvite(timestamp) => {

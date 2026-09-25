@@ -5,12 +5,12 @@ use color_eyre::eyre::eyre;
 use common::Sender;
 
 use sea_orm::DatabaseConnection;
-use slint::{ComponentHandle, ModelRc, SharedPixelBuffer, ToSharedString, VecModel, Weak};
+use slint::{ComponentHandle, ModelRc, SharedPixelBuffer, ToSharedString, VecModel};
 use tracing::{error, info};
 
 use crate::{
     App, NotificationData, UIInvite,
-    application::app::notifications::{notify, notify_data},
+    application::app::{exec_notifying_async, notifications::notify_data},
     connection::{RequestToConnection, ResponseFromConnection},
     domain::{
         invites::{
@@ -41,30 +41,6 @@ pub fn found_invite(
     }
 }
 
-pub fn exec_notifying_async(
-    app: Weak<App>,
-    f: impl Future<Output = color_eyre::Result> + Send + 'static,
-) -> color_eyre::Result {
-    slint::invoke_from_event_loop(move || {
-        slint::spawn_local(async move {
-            if let Err(e) = f.await
-                && let Some(app) = app.upgrade()
-            {
-                notify_data(
-                    &app,
-                    NotificationData::new(
-                        "Error",
-                        e.to_string(),
-                        std::time::Duration::from_secs(3),
-                    ),
-                );
-                error!("Error during operation: {}", e);
-            }
-        })
-        .unwrap();
-    })?;
-    Ok(())
-}
 ///Setups the callback 'request-invite'. This callback is intended to retrieve a new invite with the informations of the user, and then, paste it into his clipboard.
 ///This callback will internally:
 /// * Generate a new invite and set it into the clipboard
@@ -133,7 +109,7 @@ pub(crate) fn setup_request_invite(
 
 pub(crate) fn setup_find_invite(
     app: &App,
-    _: Sender<RequestToConnection>,
+    sender: Sender<RequestToConnection>,
     conn: DatabaseConnection,
 ) {
     app.global::<crate::Callbacks>().on_find_invite({
@@ -158,6 +134,10 @@ pub(crate) fn setup_find_invite(
 
                     let out = {
                         let metadata = invite.metadata();
+                        sender.fire(RequestToConnection::InsertInvite(
+                            metadata.address,
+                            metadata.peer,
+                        ))?;
                         found_invite(
                             crate::Invite {
                                 address: metadata.address.to_shared_string(),
@@ -168,6 +148,7 @@ pub(crate) fn setup_find_invite(
                             None,
                         )
                     };
+
                     let conn = conn.clone();
                     let _ = exec_notifying_async(app.clone(), async move {
                         let metadata = invite.metadata();

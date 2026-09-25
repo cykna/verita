@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 
-use database::kademlia::providers::ProviderId;
 use libp2p::PeerId;
 
 use crate::{application::KademliaAddressesQuantity, domain::error::RepositoryError};
