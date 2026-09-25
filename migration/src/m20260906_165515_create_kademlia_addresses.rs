@@ -1,6 +1,6 @@
 use sea_orm_migration::{
     prelude::*,
-    schema::{blob, integer, string},
+    schema::{blob, integer},
 };
 
 pub struct Migration;

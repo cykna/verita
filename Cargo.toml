@@ -8,7 +8,7 @@ build = "build.rs"
 members = [".", "common",  "database", "migration"]
 
 [workspace.dependencies]
-libp2p = {version="0.56.0", features = ["tokio","gossipsub", "mdns", "noise", "macros", "tcp", "yamux", "quic", "kad"]}
+libp2p = {version="0.56.0", features = ["tokio","gossipsub", "mdns", "noise", "macros", "tcp", "yamux", "quic", "kad", "identify"]}
 color-eyre = "0.6.5"
 flume = "0.12.0"
 sea-orm = {version = "2.0.2", features = ["sqlx-sqlite", "runtime-tokio-rustls", "macros"]}
@@ -48,4 +48,4 @@ image = "0.25.10"
 
 [build-dependencies]
 lucide-slint = "1.44.0"
-slint-build = "1.17.1"
+slint-build = "1.18.0"

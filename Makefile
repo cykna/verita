@@ -32,3 +32,12 @@ migrate-up:
 
 migrate-down:
 	sea-orm-cli migrate -u sqlite://app.db?mode=rwc down
+
+docker-build:
+	docker build -t verita .
+
+docker-run:
+	docker run -it verita
+
+docker-stop:
+	docker stop
